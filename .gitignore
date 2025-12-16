@@ -1,0 +1,95 @@
+# .gitignore - CinematicFX Plugin
+
+# Build directories
+build/
+cmake-build-*/
+*.dir/
+out/
+
+# Compiled binaries
+*.prm
+*.plugin
+*.bundle
+*.dll
+*.dylib
+*.so
+*.exe
+
+# Object files
+*.o
+*.obj
+*.lo
+*.slo
+*.ko
+*.elf
+
+# CUDA compiled files
+*.ptx
+*.cubin
+*.fatbin
+
+# Metal compiled files
+*.air
+*.metallib
+
+# IDE files
+.vscode/
+.vs/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# CMake cache
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+install_manifest.txt
+
+# Package managers
+*.vcxproj*
+*.sln
+*.xcodeproj/
+*.xcworkspace/
+
+# Build artifacts
+*.log
+*.tlog
+*.idb
+*.pdb
+*.ilk
+*.manifest
+
+# Test output
+test_results/
+benchmark_results/
+
+# License files (user-specific)
+*.license
+license_cache/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.swp
+
+# Adobe SDK (do not commit)
+adobe_sdk/
+AdobeSDK/
+
+# Documentation builds
+docs/_build/
+docs/*.pdf
+
+# Package archives
+*.zip
+*.tar.gz
+*.dmg
+*.pkg
+
+# Installer build output
+installers/output/
+*.msi

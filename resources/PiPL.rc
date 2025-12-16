@@ -1,0 +1,80 @@
+// ===========================================================================
+// CinematicFX Plugin - Plugin Property List (Windows)
+// 
+// Defines plugin metadata for Adobe Premiere Pro
+// ===========================================================================
+
+#include "AEConfig.h"
+#include "AE_EffectVers.h"
+
+#ifndef AE_OS_WIN
+    #error This is Windows .rc file
+#endif
+
+#define PLUGIN_NAME        "CinematicFX"
+#define PLUGIN_CATEGORY    "CinematicFX"
+#define PLUGIN_DESCRIPTION "Professional Cinematic Effects Plugin"
+#define PLUGIN_AUTHOR      "Pol Casals"
+#define PLUGIN_COPYRIGHT   "Copyright (c) 2025 Pol Casals"
+
+#define MAJOR_VERSION      1
+#define MINOR_VERSION      0
+#define PATCH_VERSION      0
+#define BUILD_VERSION      0
+
+#define PLUGIN_VERSION_STRING   "1.0.0"
+
+resource 'PiPL' (16000) {
+    {
+        Kind {
+            AEEffect
+        },
+        Name {
+            PLUGIN_NAME
+        },
+        Category {
+            PLUGIN_CATEGORY
+        },
+        Version {
+            MAJOR_VERSION,
+            MINOR_VERSION,
+            PATCH_VERSION,
+            BUILD_VERSION
+        },
+        Description {
+            PLUGIN_DESCRIPTION
+        },
+        Author {
+            PLUGIN_AUTHOR
+        },
+        Copyright {
+            PLUGIN_COPYRIGHT
+        },
+        
+        // 32-bit float processing
+        AE_PiPL_Version {
+            2,
+            0
+        },
+        AE_Effect_Spec_Version {
+            PF_PLUG_IN_VERSION,
+            PF_PLUG_IN_SUBVERS
+        },
+        AE_Effect_Version {
+            MAJOR_VERSION * 524288 + MINOR_VERSION * 32768 + PATCH_VERSION * 2048 + BUILD_VERSION
+        },
+        AE_Effect_Info_Flags {
+            0
+        },
+        AE_Effect_Global_OutFlags {
+            0x02000000 |  // 32-bit float support
+            0x00000200    // GPU acceleration
+        },
+        AE_Effect_Match_Name {
+            "POL_CinematicFX"
+        },
+        AE_Reserved_Info {
+            0
+        }
+    }
+};

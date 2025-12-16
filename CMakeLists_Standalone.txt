@@ -1,0 +1,118 @@
+# CinematicFX - Standalone Build Configuration (No Adobe SDK Required)
+# This builds the core components without Adobe integration for testing
+
+cmake_minimum_required(VERSION 3.20)
+project(CinematicFX LANGUAGES CXX)
+
+# C++ Standard
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Find CUDA
+find_package(CUDAToolkit)
+
+if(CUDAToolkit_FOUND)
+    message(STATUS "CUDA Toolkit found: ${CUDAToolkit_VERSION}")
+    message(STATUS "CUDA Include: ${CUDAToolkit_INCLUDE_DIRS}")
+    message(STATUS "CUDA Libraries: ${CUDAToolkit_LIBRARY_DIR}")
+    enable_language(CUDA)
+    set(CMAKE_CUDA_STANDARD 17)
+    set(CMAKE_CUDA_ARCHITECTURES 60 70 75 80 86 89 90)
+else()
+    message(WARNING "CUDA Toolkit not found - GPU acceleration disabled")
+endif()
+
+# Include directories
+include_directories(
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+# Source files
+set(CORE_SOURCES
+    src/utils/Logger.cpp
+    src/utils/MathUtils.cpp
+    src/core/RenderPipeline.cpp
+    src/gpu/GPUContext.cpp
+    src/gpu/TextureManager.cpp
+    src/gpu/CPUFallback.cpp
+)
+
+# CUDA sources
+if(CUDAToolkit_FOUND)
+    set(CUDA_SOURCES
+        src/kernels/cuda/bloom_kernel.cu
+        src/kernels/cuda/glow_kernel.cu
+        src/kernels/cuda/halation_kernel.cu
+        src/kernels/cuda/grain_kernel.cu
+        src/kernels/cuda/chromatic_aberration_kernel.cu
+    )
+    
+    set(CUDA_BACKEND_SOURCES
+        src/gpu/CUDABackend.cpp
+    )
+endif()
+
+# Create core library
+add_library(CinematicFX_Core STATIC
+    ${CORE_SOURCES}
+)
+
+# Create CUDA library if available
+if(CUDAToolkit_FOUND)
+    add_library(CinematicFX_CUDA STATIC
+        ${CUDA_SOURCES}
+        ${CUDA_BACKEND_SOURCES}
+    )
+    
+    set_target_properties(CinematicFX_CUDA PROPERTIES
+        CUDA_SEPARABLE_COMPILATION ON
+        CUDA_RESOLVE_DEVICE_SYMBOLS ON
+    )
+    
+    target_link_libraries(CinematicFX_CUDA
+        CUDA::cudart
+        CUDA::cuda_driver
+    )
+    
+    target_include_directories(CinematicFX_CUDA PUBLIC
+        ${CUDAToolkit_INCLUDE_DIRS}
+    )
+endif()
+
+# Test executable
+add_executable(test_cuda_simple test_cuda.cpp)
+
+if(CUDAToolkit_FOUND)
+    target_link_libraries(test_cuda_simple
+        CUDA::cudart
+    )
+endif()
+
+# Installation
+install(TARGETS CinematicFX_Core
+    ARCHIVE DESTINATION lib
+    LIBRARY DESTINATION lib
+)
+
+if(CUDAToolkit_FOUND)
+    install(TARGETS CinematicFX_CUDA
+        ARCHIVE DESTINATION lib
+        LIBRARY DESTINATION lib
+    )
+endif()
+
+# Print configuration summary
+message(STATUS "")
+message(STATUS "========================================")
+message(STATUS "CinematicFX Build Configuration")
+message(STATUS "========================================")
+message(STATUS "Build Type: ${CMAKE_BUILD_TYPE}")
+message(STATUS "C++ Standard: ${CMAKE_CXX_STANDARD}")
+message(STATUS "CUDA Support: ${CUDAToolkit_FOUND}")
+if(CUDAToolkit_FOUND)
+    message(STATUS "CUDA Version: ${CUDAToolkit_VERSION}")
+    message(STATUS "CUDA Architectures: ${CMAKE_CUDA_ARCHITECTURES}")
+endif()
+message(STATUS "========================================")
+message(STATUS "")
