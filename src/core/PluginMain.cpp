@@ -107,14 +107,38 @@ static PF_Err GlobalSetup(
     if (!g_global_data.initialized) {
         CinematicFX::Logger::Initialize(CinematicFX::Logger::LogLevel::INFO);
         
-        // Try CPU backend (always works)
-        auto gpu_context_ptr = CinematicFX::GPUContext::Create(CinematicFX::GPUBackendType::CPU);
+        // Try platform-specific GPU backend first, then CPU fallback
+        std::unique_ptr<CinematicFX::GPUContext> gpu_context_ptr;
+        
+#ifdef __APPLE__
+        // macOS: Try Metal first
+        gpu_context_ptr = CinematicFX::GPUContext::Create(CinematicFX::GPUBackendType::METAL);
+        if (gpu_context_ptr) {
+            CinematicFX::Logger::Info("CinematicFX initialized with Metal GPU backend");
+        }
+#elif defined(_WIN32)
+        // Windows: Try CUDA first (if available)
+        #ifdef CINEMATICFX_CUDA_AVAILABLE
+        gpu_context_ptr = CinematicFX::GPUContext::Create(CinematicFX::GPUBackendType::CUDA);
+        if (gpu_context_ptr) {
+            CinematicFX::Logger::Info("CinematicFX initialized with CUDA GPU backend");
+        }
+        #endif
+#endif
+        
+        // Fallback to CPU if GPU failed
+        if (!gpu_context_ptr) {
+            gpu_context_ptr = CinematicFX::GPUContext::Create(CinematicFX::GPUBackendType::CPU);
+            if (gpu_context_ptr) {
+                CinematicFX::Logger::Info("CinematicFX initialized with CPU backend");
+            } else {
+                CinematicFX::Logger::Error("Failed to initialize any backend");
+            }
+        }
+        
         if (gpu_context_ptr) {
             g_global_data.gpu_context = gpu_context_ptr.release();
             g_global_data.initialized = true;
-            CinematicFX::Logger::Info("CinematicFX initialized with CPU backend");
-        } else {
-            CinematicFX::Logger::Error("Failed to initialize GPU context");
         }
     }
     
