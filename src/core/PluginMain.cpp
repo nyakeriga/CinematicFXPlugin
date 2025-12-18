@@ -3,7 +3,6 @@
  * 
  * Adobe After Effects / Premiere Pro SDK integration
  ******************************************************************************/
-
 #include "AEConfig.h"
 #include "entry.h"
 #include "AE_Effect.h"
@@ -107,9 +106,15 @@ static PF_Err GlobalSetup(
     // Initialize GPU context (once globally)
     if (!g_global_data.initialized) {
         CinematicFX::Logger::Initialize(CinematicFX::Logger::LogLevel::INFO);
-        g_global_data.gpu_context = CinematicFX::GPUContext::Create(CinematicFX::GPUBackendType::CUDA).release();
-        if (g_global_data.gpu_context) {
+        
+        // Try CPU backend (always works)
+        auto gpu_context_ptr = CinematicFX::GPUContext::Create(CinematicFX::GPUBackendType::CPU);
+        if (gpu_context_ptr) {
+            g_global_data.gpu_context = gpu_context_ptr.release();
             g_global_data.initialized = true;
+            CinematicFX::Logger::Info("CinematicFX initialized with CPU backend");
+        } else {
+            CinematicFX::Logger::Error("Failed to initialize GPU context");
         }
     }
     
@@ -163,11 +168,11 @@ static PF_Err ParamsSetup(
     PF_ADD_TOPIC("Bloom", CINEMATICFX_BLOOM_GROUP_START);
     
     AEFX_CLR_STRUCT(def);
-    PF_ADD_FLOAT_SLIDERX("Amount", 0, 100, 0, 100, 30, 
+    PF_ADD_FLOAT_SLIDERX("Amount", 0, 100, 0, 100, 50, 
                          PF_Precision_HUNDREDTHS, 0, 0, CINEMATICFX_BLOOM_AMOUNT);
     
     AEFX_CLR_STRUCT(def);
-    PF_ADD_FLOAT_SLIDERX("Radius", 1, 100, 1, 100, 30, 
+    PF_ADD_FLOAT_SLIDERX("Radius", 1, 100, 1, 100, 40, 
                          PF_Precision_TENTHS, 0, 0, CINEMATICFX_BLOOM_RADIUS);
     
     AEFX_CLR_STRUCT(def);
@@ -189,7 +194,7 @@ static PF_Err ParamsSetup(
                          PF_Precision_TENTHS, 0, 0, CINEMATICFX_GLOW_RADIUS);
     
     AEFX_CLR_STRUCT(def);
-    PF_ADD_FLOAT_SLIDERX("Intensity", 0, 200, 0, 200, 50, 
+    PF_ADD_FLOAT_SLIDERX("Intensity", 0, 200, 0, 200, 80, 
                          PF_Precision_HUNDREDTHS, 0, 0, CINEMATICFX_GLOW_INTENSITY);
     
     AEFX_CLR_STRUCT(def);
@@ -200,7 +205,7 @@ static PF_Err ParamsSetup(
     PF_ADD_TOPIC("Halation (Film Fringe)", CINEMATICFX_HALATION_GROUP_START);
     
     AEFX_CLR_STRUCT(def);
-    PF_ADD_FLOAT_SLIDERX("Intensity", 0, 100, 0, 100, 40, 
+    PF_ADD_FLOAT_SLIDERX("Intensity", 0, 100, 0, 100, 60, 
                          PF_Precision_HUNDREDTHS, 0, 0, CINEMATICFX_HALATION_INTENSITY);
     
     AEFX_CLR_STRUCT(def);
@@ -215,7 +220,7 @@ static PF_Err ParamsSetup(
     PF_ADD_TOPIC("Curated Grain", CINEMATICFX_GRAIN_GROUP_START);
     
     AEFX_CLR_STRUCT(def);
-    PF_ADD_FLOAT_SLIDERX("Amount", 0, 100, 0, 100, 20, 
+    PF_ADD_FLOAT_SLIDERX("Amount", 0, 100, 0, 100, 35, 
                          PF_Precision_HUNDREDTHS, 0, 0, CINEMATICFX_GRAIN_AMOUNT);
     
     AEFX_CLR_STRUCT(def);
@@ -363,33 +368,55 @@ static PF_Err Render(
     
     // Create render pipeline if needed
     if (!g_global_data.render_pipeline && g_global_data.gpu_context) {
-        g_global_data.render_pipeline = new CinematicFX::RenderPipeline(g_global_data.gpu_context);
+        try {
+            g_global_data.render_pipeline = new CinematicFX::RenderPipeline(g_global_data.gpu_context);
+            CinematicFX::Logger::Info("Render pipeline created successfully");
+        } catch (const std::exception& e) {
+            CinematicFX::Logger::Error("Failed to create render pipeline: %s", e.what());
+            ERR(PF_COPY(&params[CINEMATICFX_INPUT]->u.ld, output, NULL, NULL));
+            return err;
+        }
     }
     
-    if (g_global_data.render_pipeline) {
+    if (g_global_data.render_pipeline && g_global_data.gpu_context) {
         // Convert AE buffers to our format
         PF_LayerDef* input_layer = &params[CINEMATICFX_INPUT]->u.ld;
         
         CinematicFX::FrameBuffer input_buffer;
         input_buffer.width = input_layer->width;
         input_buffer.height = input_layer->height;
-        input_buffer.stride = input_layer->rowbytes / sizeof(PF_PixelFloat);
+        // Stride is in pixels (RGBA), rowbytes is total bytes per row
+        input_buffer.stride = input_layer->width * 4; // RGBA
         input_buffer.data = reinterpret_cast<float*>(input_layer->data);
         input_buffer.owns_data = false;
         
         CinematicFX::FrameBuffer output_buffer;
         output_buffer.width = output->width;
         output_buffer.height = output->height;
-        output_buffer.stride = output->rowbytes / sizeof(PF_PixelFloat);
+        output_buffer.stride = output->width * 4; // RGBA
         output_buffer.data = reinterpret_cast<float*>(output->data);
         output_buffer.owns_data = false;
         
         // Render
         uint32_t frame_number = static_cast<uint32_t>(in_data->current_time);
-        g_global_data.render_pipeline->RenderFrame(input_buffer, output_buffer, 
-                                                    effect_params, frame_number);
+        bool render_success = false;
+        
+        try {
+            render_success = g_global_data.render_pipeline->RenderFrame(
+                input_buffer, output_buffer, effect_params, frame_number);
+        } catch (const std::exception& e) {
+            CinematicFX::Logger::Error("Render exception: %s", e.what());
+            render_success = false;
+        }
+        
+        if (!render_success) {
+            // On error, copy input to output
+            CinematicFX::Logger::Warning("Rendering failed, copying input to output");
+            ERR(PF_COPY(&params[CINEMATICFX_INPUT]->u.ld, output, NULL, NULL));
+        }
     } else {
-        // Fallback: just copy input to output
+        // No pipeline - just copy input to output
+        CinematicFX::Logger::Warning("No render pipeline available, copying input");
         ERR(PF_COPY(&params[CINEMATICFX_INPUT]->u.ld, output, NULL, NULL));
     }
     

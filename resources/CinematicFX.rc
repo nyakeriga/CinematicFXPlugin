@@ -1,0 +1,121 @@
+//
+// CinematicFX Plugin - Windows Resource File
+// Embeds PiPL (Plugin Property List) data for Adobe host applications
+//
+
+#include "winres.h"
+
+// Version Information
+#define CINEMATICFX_MAJOR_VERSION 1
+#define CINEMATICFX_MINOR_VERSION 0
+#define CINEMATICFX_PATCH_VERSION 0
+#define CINEMATICFX_BUILD_VERSION 0
+
+#define CINEMATICFX_VERSION_STRING "1.0.0\0"
+#define CINEMATICFX_COPYRIGHT "Copyright (c) 2025 Pol Casals\0"
+
+// PiPL Resource as Binary Data
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+16000 RCDATA
+{
+    // PiPL Header
+    0x00, 0x01, 0x00, 0x00,  // Version 1
+    0x00, 0x00, 0x00, 0x00,  // Reserved
+    0x00, 0x00, 0x00, 0x0C,  // 12 properties
+    
+    // Property 1: Kind = 'AEft' (After Effects Plugin)
+    'k', 'i', 'n', 'd',      // Property type
+    0x00, 0x00, 0x00, 0x04,  // Property size (4 bytes)
+    'A', 'E', 'f', 't',      // After Effects plugin type
+    
+    // Property 2: Name = "CinematicFX"
+    'n', 'a', 'm', 'e',      // Property type
+    0x00, 0x00, 0x00, 0x0D,  // Property size (13 bytes)
+    0x0B,                     // String length (11)
+    'C', 'i', 'n', 'e', 'm', 'a', 't', 'i', 'c', 'F', 'X',  // Name
+    0x00,                     // Padding
+    
+    // Property 3: Category = "CinematicFX"
+    'c', 'a', 't', 'e',      // Property type
+    0x00, 0x00, 0x00, 0x0D,  // Property size
+    0x0B,                     // String length
+    'C', 'i', 'n', 'e', 'm', 'a', 't', 'i', 'c', 'F', 'X',
+    0x00,                     // Padding
+    
+    // Property 4: Match Name = "POL_CinematicFX"
+    'm', 'a', 't', 'n',      // Property type
+    0x00, 0x00, 0x00, 0x11,  // Property size (17 bytes)
+    0x0F,                     // String length (15)
+    'P', 'O', 'L', '_', 'C', 'i', 'n', 'e', 'm', 'a', 't', 'i', 'c', 'F', 'X',
+    
+    // Property 5: Version
+    'v', 'e', 'r', 's',      // Property type
+    0x00, 0x00, 0x00, 0x04,  // Property size
+    0x00, 0x01, 0x00, 0x00,  // Version 1.0
+    
+    // Property 6: AE_PiPL_Version
+    'A', 'E', '0', '1',      // Property type
+    0x00, 0x00, 0x00, 0x04,  // Property size
+    0x00, 0x02, 0x00, 0x00,  // Version 2.0
+    
+    // Property 7: AE_Effect_Spec_Version
+    'A', 'E', '0', '2',      // Property type
+    0x00, 0x00, 0x00, 0x04,  // Property size
+    0x00, 0x0D, 0x00, 0x00,  // Spec version
+    
+    // Property 8: AE_Effect_Version
+    'A', 'E', '0', '3',      // Property type
+    0x00, 0x00, 0x00, 0x04,  // Property size
+    0x00, 0x08, 0x00, 0x00,  // Effect version
+    
+    // Property 9: AE_Effect_Info_Flags
+    'A', 'E', '0', '4',      // Property type
+    0x00, 0x00, 0x00, 0x04,  // Property size
+    0x00, 0x00, 0x00, 0x00,  // No special flags
+    
+    // Property 10: AE_Effect_Global_OutFlags
+    'A', 'E', '0', '5',      // Property type
+    0x00, 0x00, 0x00, 0x04,  // Property size
+    0x02, 0x00, 0x02, 0x00,  // 32-bit float + GPU support
+    
+    // Property 11: AE_Effect_Global_OutFlags_2
+    'A', 'E', '0', '6',      // Property type
+    0x00, 0x00, 0x00, 0x04,  // Property size
+    0x00, 0x02, 0x00, 0x01,  // Float color aware + smart render
+    
+    // Property 12: AE_Reserved_Info
+    'A', 'E', '0', '7',      // Property type
+    0x00, 0x00, 0x00, 0x04,  // Property size
+    0x00, 0x00, 0x00, 0x00   // Reserved
+}
+
+
+// Version Info Resource
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION     CINEMATICFX_MAJOR_VERSION,CINEMATICFX_MINOR_VERSION,CINEMATICFX_PATCH_VERSION,CINEMATICFX_BUILD_VERSION
+PRODUCTVERSION  CINEMATICFX_MAJOR_VERSION,CINEMATICFX_MINOR_VERSION,CINEMATICFX_PATCH_VERSION,CINEMATICFX_BUILD_VERSION
+FILEFLAGSMASK   0x3fL
+FILEFLAGS       0x0L
+FILEOS          VOS_NT_WINDOWS32
+FILETYPE        VFT_DLL
+FILESUBTYPE     VFT2_UNKNOWN
+{
+    BLOCK "StringFileInfo"
+    {
+        BLOCK "040904b0"
+        {
+            VALUE "CompanyName",      "Pol Casals\0"
+            VALUE "FileDescription",  "CinematicFX - Professional Cinematic Effects Plugin\0"
+            VALUE "FileVersion",      CINEMATICFX_VERSION_STRING
+            VALUE "InternalName",     "CinematicFX\0"
+            VALUE "LegalCopyright",   CINEMATICFX_COPYRIGHT
+            VALUE "OriginalFilename", "CinematicFX.prm\0"
+            VALUE "ProductName",      "CinematicFX\0"
+            VALUE "ProductVersion",   CINEMATICFX_VERSION_STRING
+        }
+    }
+    BLOCK "VarFileInfo"
+    {
+        VALUE "Translation", 0x409, 1200
+    }
+}

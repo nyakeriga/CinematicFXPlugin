@@ -55,8 +55,13 @@ include_directories(
 
 if(CINEMATICFX_BUILD_CUDA AND NOT APPLE)
     # Try to find CUDA explicitly on Windows
-    if(WIN32 AND EXISTS "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.0/bin/nvcc.exe")
-        set(CMAKE_CUDA_COMPILER "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.0/bin/nvcc.exe")
+    # CUDA support - UPDATE VERSION NUMBER BELOW (v12.4, v12.5, v12.6, etc.)
+    if(WIN32 AND EXISTS "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.4/bin/nvcc.exe")
+        set(CMAKE_CUDA_COMPILER "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.4/bin/nvcc.exe")
+    elseif(WIN32 AND EXISTS "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.5/bin/nvcc.exe")
+        set(CMAKE_CUDA_COMPILER "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.5/bin/nvcc.exe")
+    elseif(WIN32 AND EXISTS "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.6/bin/nvcc.exe")
+        set(CMAKE_CUDA_COMPILER "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.6/bin/nvcc.exe")
     endif()
     
     include(CheckLanguage)
@@ -151,17 +156,20 @@ set(UTIL_SOURCES
 ################################################################################
 
 if(WIN32)
-    # Windows: .prm plugin
+    # Windows: .prm plugin (without PiPL resource for now)
     add_library(CinematicFX MODULE
         ${CORE_SOURCES}
-        ${GPU_SOURCES}
         ${UTIL_SOURCES}
         ${CUDA_KERNEL_SOURCES}
     )
     
+    # Add GPU sources
+    target_sources(CinematicFX PRIVATE ${GPU_SOURCES})
+    
     set_target_properties(CinematicFX PROPERTIES
         SUFFIX ".prm"
         OUTPUT_NAME "CinematicFX"
+        LINK_FLAGS "/DEF:${CMAKE_SOURCE_DIR}/resources/CinematicFX.def"
     )
     
 elseif(APPLE)

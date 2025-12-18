@@ -1,0 +1,4 @@
+LIBRARY "CinematicFX"
+EXPORTS
+    EffectMain
+    PluginDataEntryFunction

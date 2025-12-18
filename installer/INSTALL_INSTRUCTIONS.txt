@@ -1,0 +1,191 @@
+================================================================================
+CinematicFX Plugin - Installation Instructions
+================================================================================
+
+⚠️ IMPORTANT: This plugin currently works in AFTER EFFECTS only!
+   Premiere Pro requires additional PiPL resource (see below)
+
+FILES INCLUDED:
+  - CinematicFX.prm           (The plugin)
+  - vcruntime140.dll          (Required Visual C++ Runtime)
+  - Install_AfterEffects.bat  (Automated installer for After Effects)
+  - Install_Premiere.bat      (Automated installer for Premiere - WON'T WORK)
+
+================================================================================
+QUICK INSTALL - AFTER EFFECTS (RECOMMENDED):
+================================================================================
+
+1. Right-click "Install_AfterEffects.bat" → Run as Administrator
+
+2. The installer will automatically:
+   - Find your After Effects installation
+   - Copy both required files
+   - Show success confirmation
+
+3. Restart After Effects
+
+4. Find the effect at: Effect → CinematicFX → CinematicFX
+
+
+================================================================================
+MANUAL INSTALLATION - AFTER EFFECTS:
+================================================================================
+
+1. Close Adobe After Effects if it's running
+
+2. Copy BOTH files to:
+   C:\Program Files\Adobe\Adobe After Effects [VERSION]\Support Files\Plug-ins\
+   
+   Files to copy:
+   - CinematicFX.prm
+   - vcruntime140.dll
+   
+   Replace [VERSION] with your AE version (e.g., 2024, 2025)
+
+3. Restart After Effects
+
+4. Find the effect at: Effect → CinematicFX → CinematicFX
+
+
+================================================================================
+WHY PREMIERE PRO DOESN'T WORK:
+================================================================================
+
+Premiere Pro logs show: "No loaders recognized this plugin"
+
+ROOT CAUSE:
+  The plugin is missing an embedded PiPL (Plugin Property List) resource
+  that Premiere Pro requires to recognize .prm plugins.
+
+TECHNICAL EXPLANATION:
+  - After Effects can load plugins based on exported entry points alone
+  - Premiere Pro requires a binary PiPL resource embedded in the .prm file
+  - Windows .rc resource files don't support Mac PiPL syntax
+  - Need Adobe's PiPLTool.exe compiler (from SDK) to create proper resource
+
+TO FIX FOR PREMIERE PRO (Advanced):
+  1. Obtain PiPLTool.exe from Adobe SDK
+  2. Compile resources/PiPL.r to Windows binary format
+  3. Embed compiled resource in CMakeLists.txt
+  4. Rebuild plugin
+  5. Test in Premiere Pro
+
+CURRENT STATUS:
+  ✅ Fully functional in Adobe After Effects
+  ❌ Not recognized by Adobe Premiere Pro (needs PiPL resource work)
+
+
+================================================================================
+ALTERNATIVE: Install Visual C++ Redistributable (Recommended)
+================================================================================
+
+Instead of copying vcruntime140.dll, you can install the official runtime:
+
+1. Download from Microsoft:
+   https://aka.ms/vs/17/release/vc_redist.x64.exe
+
+2. Run the installer
+
+3. Then you only need to copy CinematicFX.prm (not the .dll)
+
+
+================================================================================
+TROUBLESHOOTING:
+================================================================================
+
+PLUGIN DOESN'T APPEAR:
+  ✓ Verify BOTH files are copied to the plugins folder
+  ✓ Restart Adobe software completely
+  ✓ Check Windows Security hasn't blocked the files
+  ✓ Right-click each file → Properties → Unblock (if present)
+
+PLUGIN CRASHES ON LOAD:
+  ✓ Install Visual C++ Redistributable (link above)
+  ✓ Update your graphics drivers
+  ✓ Try CPU-only mode (CUDA not required)
+
+SLOW PERFORMANCE:
+  ✓ Current version uses CPU rendering
+  ✓ For GPU acceleration: Install CUDA 12.4+ and rebuild
+  ✓ Lower resolution for preview, full quality for export
+
+
+================================================================================
+EFFECT CONTROLS:
+================================================================================
+
+After applying the effect, you'll see these grouped controls:
+
+• Enable Output - Master on/off switch
+
+• Bloom
+  - Amount (0-100)
+  - Radius (1-100)
+  - Tint (color picker)
+
+• Glow (Pro-Mist)
+  - Threshold (0-100)
+  - Radius (1-100)
+  - Intensity (0-200)
+
+• Halation (Film Fringe)
+  - Intensity (0-100)
+  - Radius (1-50)
+
+• Curated Grain
+  - Amount (0-100)
+  - Size (0.5-5.0)
+  - Luma Mapping (0-100)
+
+• Chromatic Aberration
+  - Amount (0-10)
+  - Angle (0-360°)
+
+
+================================================================================
+RECOMMENDED SETTINGS:
+================================================================================
+
+CINEMATIC BLOOM:
+  Bloom Amount: 45
+  Bloom Radius: 35
+  Bloom Tint: Slight warm (255, 245, 230)
+
+PRO-MIST GLOW:
+  Glow Threshold: 65
+  Glow Radius: 50
+  Glow Intensity: 60
+
+FILM HALATION:
+  Halation Intensity: 35
+  Halation Radius: 12
+
+FILM GRAIN:
+  Grain Amount: 18
+  Grain Size: 1.0
+  Luma Mapping: 45
+
+
+================================================================================
+VERSION INFO:
+================================================================================
+
+Version: 1.0.0
+Build: CPU Fallback (Universal - works on all machines)
+Architecture: x64
+SDK: Adobe After Effects SDK 25.6
+
+For GPU acceleration: Requires CUDA 12.4+ and rebuild
+Current: Fully functional CPU rendering
+
+
+================================================================================
+SUPPORT:
+================================================================================
+
+Built for: Pol Casals
+Contact: Developer for support and custom modifications
+Features: 5 professional cinematic effects with HDR pipeline
+
+
+================================================================================
