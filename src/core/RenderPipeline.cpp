@@ -34,8 +34,27 @@ bool RenderPipeline::RenderFrame(
     const EffectParameters& params,
     uint32_t frame_number
 ) {
+    // ENHANCED: Comprehensive validation before ANY processing
     if (!gpu_context_ || !gpu_context_->GetBackend()) {
         Logger::Error("RenderPipeline: No valid GPU backend");
+        return false;
+    }
+    
+    // Validate input frame buffer
+    if (!input.data || input.width <= 0 || input.height <= 0) {
+        Logger::Error("RenderPipeline: Invalid input frame buffer");
+        return false;
+    }
+    
+    // Validate output frame buffer
+    if (!output.data || output.width <= 0 || output.height <= 0) {
+        Logger::Error("RenderPipeline: Invalid output frame buffer");
+        return false;
+    }
+    
+    // Check for dimension mismatch
+    if (input.width != output.width || input.height != output.height) {
+        Logger::Error("RenderPipeline: Input/output dimension mismatch");
         return false;
     }
     
@@ -45,6 +64,10 @@ bool RenderPipeline::RenderFrame(
     }
     
     IGPUBackend* backend = gpu_context_->GetBackend();
+    if (!backend) {
+        Logger::Error("RenderPipeline: Backend is NULL");
+        return false;
+    }
     
     // Initialize textures on first frame or resolution change
     if (!temp_texture_1_ || !temp_texture_2_) {

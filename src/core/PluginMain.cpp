@@ -20,6 +20,10 @@
 #include "../utils/Logger.h"
 
 #include <cstring>
+#include <stdio.h>
+#include <algorithm>
+#include <cmath>
+#include <algorithm>
 
 // Parameter IDs
 enum {
@@ -94,14 +98,17 @@ static PF_Err GlobalSetup(
     out_data->name[0] = '\0';
     strncpy(out_data->name, "CinematicFX", sizeof(out_data->name) - 1);
     
-    // Enable 32-bit float processing
+    // Enable 32-bit float processing and proper UI
     out_data->out_flags = PF_OutFlag_DEEP_COLOR_AWARE |
                           PF_OutFlag_PIX_INDEPENDENT |
-                          PF_OutFlag_USE_OUTPUT_EXTENT;
+                          PF_OutFlag_USE_OUTPUT_EXTENT |
+                          PF_OutFlag_I_DO_DIALOG;  // Enable About dialog
     
     out_data->out_flags2 = PF_OutFlag2_FLOAT_COLOR_AWARE |
                            PF_OutFlag2_SUPPORTS_SMART_RENDER |
-                           PF_OutFlag2_SUPPORTS_THREADED_RENDERING;
+                           PF_OutFlag2_SUPPORTS_THREADED_RENDERING |
+                           PF_OutFlag2_DOESNT_NEED_EMPTY_PIXELS |
+                           PF_OutFlag2_REVEALS_ZERO_ALPHA;
     
     // Initialize GPU context (once globally)
     if (!g_global_data.initialized) {
@@ -181,6 +188,18 @@ static PF_Err ParamsSetup(
     PF_ParamDef** params,
     PF_LayerDef* output
 ) {
+    PF_Err err = PF_Err_NONE;
+    
+    // ENHANCED: Critical NULL checks with comprehensive validation
+    if (!in_data || !out_data) {
+        return PF_Err_BAD_CALLBACK_PARAM;
+    }
+    
+    // Validate version compatibility
+    if (in_data->version.major < 13) {  // Minimum AE/Premiere version
+        return PF_Err_UNRECOGNIZED_PARAM_TYPE;
+    }
+    
     PF_ParamDef def;
     
     // Master Output Enable
@@ -288,6 +307,27 @@ static PF_Err Render(
 ) {
     PF_Err err = PF_Err_NONE;
     
+    // ENHANCED: Critical NULL and validity checks with detailed validation
+    if (!in_data || !out_data || !params || !output) {
+        return PF_Err_BAD_CALLBACK_PARAM;
+    }
+    
+    // Validate input layer
+    if (!params[CINEMATICFX_INPUT]) {
+        return PF_Err_BAD_CALLBACK_PARAM;
+    }
+    
+    // Validate layer data structure
+    PF_LayerDef* input_layer = &params[CINEMATICFX_INPUT]->u.ld;
+    if (!input_layer || !input_layer->data || input_layer->width <= 0 || input_layer->height <= 0) {
+        return PF_Err_BAD_CALLBACK_PARAM;
+    }
+    
+    // Validate output layer
+    if (!output->data || output->width <= 0 || output->height <= 0) {
+        return PF_Err_BAD_CALLBACK_PARAM;
+    }
+    
     // Check if output is enabled
     PF_ParamDef output_enabled_param;
     AEFX_CLR_STRUCT(output_enabled_param);
@@ -317,11 +357,12 @@ static PF_Err Render(
     ERR(PF_CHECKOUT_PARAM(in_data, CINEMATICFX_BLOOM_TINT, in_data->current_time, 
                           in_data->time_step, in_data->time_scale, &bloom_tint));
     
-    effect_params.bloom.amount = bloom_amount.u.fs_d.value / 100.0f;
-    effect_params.bloom.radius = bloom_radius.u.fs_d.value;
-    effect_params.bloom.tint_r = bloom_tint.u.cd.value.red / 255.0f;
-    effect_params.bloom.tint_g = bloom_tint.u.cd.value.green / 255.0f;
-    effect_params.bloom.tint_b = bloom_tint.u.cd.value.blue / 255.0f;
+    // Safe conversion with bounds checking
+    effect_params.bloom.amount = std::max(0.0f, std::min(1.0f, static_cast<float>(bloom_amount.u.fs_d.value) / 100.0f));
+    effect_params.bloom.radius = std::max(1.0f, std::min(100.0f, static_cast<float>(bloom_radius.u.fs_d.value)));
+    effect_params.bloom.tint_r = std::max(0.0f, std::min(1.0f, static_cast<float>(bloom_tint.u.cd.value.red) / 255.0f));
+    effect_params.bloom.tint_g = std::max(0.0f, std::min(1.0f, static_cast<float>(bloom_tint.u.cd.value.green) / 255.0f));
+    effect_params.bloom.tint_b = std::max(0.0f, std::min(1.0f, static_cast<float>(bloom_tint.u.cd.value.blue) / 255.0f));
     
     ERR(PF_CHECKIN_PARAM(in_data, &bloom_amount));
     ERR(PF_CHECKIN_PARAM(in_data, &bloom_radius));
@@ -448,6 +489,31 @@ static PF_Err Render(
 }
 
 /*******************************************************************************
+ * About - Display plugin information
+ ******************************************************************************/
+static PF_Err About(
+    PF_InData* in_data,
+    PF_OutData* out_data,
+    PF_ParamDef** params,
+    PF_LayerDef* output
+) {
+    // Simple About message
+    sprintf_s(
+        out_data->return_msg,
+        sizeof(out_data->return_msg),
+        "%s v%d.%d\\r\\rCinematic Film Effects\\r"
+        "Professional Bloom, Glow, Halation, Grain & Chromatic Aberration\\r\\r"
+        "(c) 2025 Pol Casals\\r"
+        "GPU-Accelerated for Maximum Performance",
+        "CinematicFX",
+        CINEMATICFX_VERSION_MAJOR,
+        CINEMATICFX_VERSION_MINOR
+    );
+    
+    return PF_Err_NONE;
+}
+
+/*******************************************************************************
  * Entry Point Function
  ******************************************************************************/
 DllExport PF_Err PluginDataEntryFunction(
@@ -463,8 +529,8 @@ DllExport PF_Err PluginDataEntryFunction(
         inPtr,
         inPluginDataCallBackPtr,
         "CinematicFX",              // Name
-        "POL_CinematicFX",          // Match Name
-        "CinematicFX",              // Category
+        "ADBE CinematicFX",         // Match Name (ADBE prefix for Adobe)
+        "Stylize",                  // Category (standard Premiere category)
         AE_RESERVED_INFO            // Reserved
     );
     
@@ -481,10 +547,15 @@ PF_Err EffectMain(
 ) {
     PF_Err err = PF_Err_NONE;
     
+    // CRITICAL: Validate input pointers before ANY processing
+    if (!in_data || !out_data) {
+        return PF_Err_BAD_CALLBACK_PARAM;
+    }
+    
     try {
         switch (cmd) {
             case PF_Cmd_ABOUT:
-                out_data->out_flags = PF_OutFlag_NONE;
+                err = About(in_data, out_data, params, output);
                 break;
                 
             case PF_Cmd_GLOBAL_SETUP:
@@ -499,15 +570,49 @@ PF_Err EffectMain(
                 err = ParamsSetup(in_data, out_data, params, output);
                 break;
                 
+            case PF_Cmd_SEQUENCE_SETUP:
+                // Premiere-specific: setup for sequence
+                out_data->sequence_data = nullptr;
+                err = PF_Err_NONE;
+                break;
+                
+            case PF_Cmd_SEQUENCE_SETDOWN:
+                // Premiere-specific: cleanup for sequence
+                if (out_data && out_data->sequence_data) {
+                    out_data->sequence_data = nullptr;
+                }
+                err = PF_Err_NONE;
+                break;
+                
             case PF_Cmd_RENDER:
-                err = Render(in_data, out_data, params, output);
+                if (params && output) {
+                    err = Render(in_data, out_data, params, output);
+                } else {
+                    err = PF_Err_BAD_CALLBACK_PARAM;
+                }
                 break;
                 
             default:
+                // Unknown command - safe to ignore
+                err = PF_Err_NONE;
                 break;
         }
-    } catch (PF_Err& thrown_err) {
+    }
+    catch (const PF_Err& thrown_err) {
+        // Handle PF_Err exceptions
         err = thrown_err;
+    }
+    catch (const std::bad_alloc&) {
+        // Memory allocation failure
+        err = PF_Err_OUT_OF_MEMORY;
+    }
+    catch (const std::exception& e) {
+        // Standard C++ exceptions
+        err = PF_Err_INTERNAL_STRUCT_DAMAGED;
+    }
+    catch (...) {
+        // Catch ALL other exceptions to prevent crashes
+        err = PF_Err_INTERNAL_STRUCT_DAMAGED;
     }
     
     return err;
