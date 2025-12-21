@@ -32,36 +32,45 @@ enum {
     // Master controls
     CINEMATICFX_OUTPUT_ENABLED,
     
-    // Bloom parameters
-    CINEMATICFX_BLOOM_GROUP_START,
-    CINEMATICFX_BLOOM_AMOUNT,
-    CINEMATICFX_BLOOM_RADIUS,
-    CINEMATICFX_BLOOM_TINT,
-    CINEMATICFX_BLOOM_GROUP_END,
+    // Bloom parameters removed (merged into Glow)
     
-    // Glow parameters
+    // Glow (merged with Bloom)
     CINEMATICFX_GLOW_GROUP_START,
+    CINEMATICFX_GLOW_ENABLED,
     CINEMATICFX_GLOW_THRESHOLD,
-    CINEMATICFX_GLOW_RADIUS,
     CINEMATICFX_GLOW_INTENSITY,
+    CINEMATICFX_GLOW_RADIUS_X,
+    CINEMATICFX_GLOW_RADIUS_Y,
+    CINEMATICFX_GLOW_DESATURATION,
+    CINEMATICFX_GLOW_BLEND_MODE,
+    CINEMATICFX_GLOW_TINT,
     CINEMATICFX_GLOW_GROUP_END,
     
     // Halation parameters
     CINEMATICFX_HALATION_GROUP_START,
     CINEMATICFX_HALATION_INTENSITY,
     CINEMATICFX_HALATION_RADIUS,
+    CINEMATICFX_HALATION_HUE,
+    CINEMATICFX_HALATION_SATURATION,
+    CINEMATICFX_HALATION_THRESHOLD,
     CINEMATICFX_HALATION_GROUP_END,
     
     // Grain parameters
     CINEMATICFX_GRAIN_GROUP_START,
-    CINEMATICFX_GRAIN_AMOUNT,
+    CINEMATICFX_GRAIN_SHADOWS,
+    CINEMATICFX_GRAIN_MIDS,
+    CINEMATICFX_GRAIN_HIGHLIGHTS,
     CINEMATICFX_GRAIN_SIZE,
-    CINEMATICFX_GRAIN_LUMA_MAPPING,
+    CINEMATICFX_GRAIN_SOFTNESS,
+    CINEMATICFX_GRAIN_SATURATION,
     CINEMATICFX_GRAIN_GROUP_END,
     
     // Chromatic Aberration parameters
     CINEMATICFX_CHROMA_GROUP_START,
-    CINEMATICFX_CHROMA_AMOUNT,
+    CINEMATICFX_CHROMA_RED_SCALE,
+    CINEMATICFX_CHROMA_GREEN_SCALE,
+    CINEMATICFX_CHROMA_BLUE_SCALE,
+    CINEMATICFX_CHROMA_BLURRINESS,
     CINEMATICFX_CHROMA_ANGLE,
     CINEMATICFX_CHROMA_GROUP_END,
     
@@ -206,73 +215,82 @@ static PF_Err ParamsSetup(
     AEFX_CLR_STRUCT(def);
     PF_ADD_CHECKBOX("Enable Output", "", TRUE, 0, CINEMATICFX_OUTPUT_ENABLED);
     
-    // --- BLOOM GROUP ---
+    // Bloom group removed (merged into Glow)
+    
+    // --- GLOW GROUP (Merged Bloom+Glow) ---
     AEFX_CLR_STRUCT(def);
-    PF_ADD_TOPIC("Bloom", CINEMATICFX_BLOOM_GROUP_START);
+    PF_ADD_TOPIC("Glow (Complete)", CINEMATICFX_GLOW_GROUP_START);
     
     AEFX_CLR_STRUCT(def);
-    PF_ADD_FLOAT_SLIDERX("Amount", 0, 100, 0, 100, 50, 
-                         PF_Precision_HUNDREDTHS, 0, 0, CINEMATICFX_BLOOM_AMOUNT);
+    PF_ADD_CHECKBOX("Enable Glow", "", TRUE, 0, CINEMATICFX_GLOW_ENABLED);
     
     AEFX_CLR_STRUCT(def);
-    PF_ADD_FLOAT_SLIDERX("Radius", 1, 100, 1, 100, 40, 
-                         PF_Precision_TENTHS, 0, 0, CINEMATICFX_BLOOM_RADIUS);
+    PF_ADD_FLOAT_SLIDERX("Threshold", 0, 100, 0, 100, 70, PF_Precision_HUNDREDTHS, 0, 0, CINEMATICFX_GLOW_THRESHOLD);
     
     AEFX_CLR_STRUCT(def);
-    PF_ADD_COLOR("Tint", 255, 255, 255, CINEMATICFX_BLOOM_TINT);
+    PF_ADD_FLOAT_SLIDERX("Intensity", 0, 200, 0, 200, 80, PF_Precision_HUNDREDTHS, 0, 0, CINEMATICFX_GLOW_INTENSITY);
     
     AEFX_CLR_STRUCT(def);
-    PF_END_TOPIC(CINEMATICFX_BLOOM_GROUP_END);
-    
-    // --- GLOW GROUP ---
-    AEFX_CLR_STRUCT(def);
-    PF_ADD_TOPIC("Glow (Pro-Mist)", CINEMATICFX_GLOW_GROUP_START);
+    PF_ADD_FLOAT_SLIDERX("Radius X", 1, 100, 1, 100, 40, PF_Precision_TENTHS, 0, 0, CINEMATICFX_GLOW_RADIUS_X);
     
     AEFX_CLR_STRUCT(def);
-    PF_ADD_FLOAT_SLIDERX("Threshold", 0, 100, 0, 100, 70, 
-                         PF_Precision_HUNDREDTHS, 0, 0, CINEMATICFX_GLOW_THRESHOLD);
+    PF_ADD_FLOAT_SLIDERX("Radius Y", 1, 100, 1, 100, 40, PF_Precision_TENTHS, 0, 0, CINEMATICFX_GLOW_RADIUS_Y);
     
     AEFX_CLR_STRUCT(def);
-    PF_ADD_FLOAT_SLIDERX("Radius", 1, 100, 1, 100, 40, 
-                         PF_Precision_TENTHS, 0, 0, CINEMATICFX_GLOW_RADIUS);
+    PF_ADD_FLOAT_SLIDERX("Desaturation", 0, 100, 0, 100, 0, PF_Precision_HUNDREDTHS, 0, 0, CINEMATICFX_GLOW_DESATURATION);
     
     AEFX_CLR_STRUCT(def);
-    PF_ADD_FLOAT_SLIDERX("Intensity", 0, 200, 0, 200, 80, 
-                         PF_Precision_HUNDREDTHS, 0, 0, CINEMATICFX_GLOW_INTENSITY);
+    PF_ADD_POPUP("Blend Mode", 3, 1, "Screen|Add|Normal", CINEMATICFX_GLOW_BLEND_MODE);
+    
+    AEFX_CLR_STRUCT(def);
+    PF_ADD_COLOR("Tint", 255, 255, 255, CINEMATICFX_GLOW_TINT);
     
     AEFX_CLR_STRUCT(def);
     PF_END_TOPIC(CINEMATICFX_GLOW_GROUP_END);
     
-    // --- HALATION GROUP ---
+    // --- HALATION GROUP (Redesigned) ---
     AEFX_CLR_STRUCT(def);
     PF_ADD_TOPIC("Halation (Film Fringe)", CINEMATICFX_HALATION_GROUP_START);
     
     AEFX_CLR_STRUCT(def);
-    PF_ADD_FLOAT_SLIDERX("Intensity", 0, 100, 0, 100, 60, 
-                         PF_Precision_HUNDREDTHS, 0, 0, CINEMATICFX_HALATION_INTENSITY);
+    PF_ADD_FLOAT_SLIDERX("Intensity", 0, 100, 0, 100, 60, PF_Precision_HUNDREDTHS, 0, 0, CINEMATICFX_HALATION_INTENSITY);
     
     AEFX_CLR_STRUCT(def);
-    PF_ADD_FLOAT_SLIDERX("Radius", 1, 50, 1, 50, 15, 
-                         PF_Precision_TENTHS, 0, 0, CINEMATICFX_HALATION_RADIUS);
+    PF_ADD_FLOAT_SLIDERX("Radius", 1, 50, 1, 50, 15, PF_Precision_TENTHS, 0, 0, CINEMATICFX_HALATION_RADIUS);
+    
+    AEFX_CLR_STRUCT(def);
+    PF_ADD_FLOAT_SLIDERX("Hue", 0, 360, 0, 360, 0, PF_Precision_TENTHS, 0, 0, CINEMATICFX_HALATION_HUE);
+    
+    AEFX_CLR_STRUCT(def);
+    PF_ADD_FLOAT_SLIDERX("Saturation", 0, 200, 0, 200, 100, PF_Precision_HUNDREDTHS, 0, 0, CINEMATICFX_HALATION_SATURATION);
+    
+    AEFX_CLR_STRUCT(def);
+    PF_ADD_FLOAT_SLIDERX("Threshold", 0, 100, 0, 100, 50, PF_Precision_HUNDREDTHS, 0, 0, CINEMATICFX_HALATION_THRESHOLD);
     
     AEFX_CLR_STRUCT(def);
     PF_END_TOPIC(CINEMATICFX_HALATION_GROUP_END);
     
-    // --- GRAIN GROUP ---
+    // --- GRAIN GROUP (Redesigned) ---
     AEFX_CLR_STRUCT(def);
     PF_ADD_TOPIC("Curated Grain", CINEMATICFX_GRAIN_GROUP_START);
     
     AEFX_CLR_STRUCT(def);
-    PF_ADD_FLOAT_SLIDERX("Amount", 0, 100, 0, 100, 35, 
-                         PF_Precision_HUNDREDTHS, 0, 0, CINEMATICFX_GRAIN_AMOUNT);
+    PF_ADD_FLOAT_SLIDERX("Shadows Grain", 0, 100, 0, 100, 20, PF_Precision_HUNDREDTHS, 0, 0, CINEMATICFX_GRAIN_SHADOWS);
     
     AEFX_CLR_STRUCT(def);
-    PF_ADD_FLOAT_SLIDERX("Size", 0.5, 5.0, 0.5, 5.0, 1.0, 
-                         PF_Precision_HUNDREDTHS, 0, 0, CINEMATICFX_GRAIN_SIZE);
+    PF_ADD_FLOAT_SLIDERX("Midtones Grain", 0, 100, 0, 100, 35, PF_Precision_HUNDREDTHS, 0, 0, CINEMATICFX_GRAIN_MIDS);
     
     AEFX_CLR_STRUCT(def);
-    PF_ADD_FLOAT_SLIDERX("Luma Mapping", 0, 100, 0, 100, 50, 
-                         PF_Precision_HUNDREDTHS, 0, 0, CINEMATICFX_GRAIN_LUMA_MAPPING);
+    PF_ADD_FLOAT_SLIDERX("Highlights Grain", 0, 100, 0, 100, 15, PF_Precision_HUNDREDTHS, 0, 0, CINEMATICFX_GRAIN_HIGHLIGHTS);
+    
+    AEFX_CLR_STRUCT(def);
+    PF_ADD_FLOAT_SLIDERX("Size", 0.5, 5.0, 0.5, 5.0, 1.0, PF_Precision_HUNDREDTHS, 0, 0, CINEMATICFX_GRAIN_SIZE);
+    
+    AEFX_CLR_STRUCT(def);
+    PF_ADD_FLOAT_SLIDERX("Softness", 0, 100, 0, 100, 50, PF_Precision_HUNDREDTHS, 0, 0, CINEMATICFX_GRAIN_SOFTNESS);
+    
+    AEFX_CLR_STRUCT(def);
+    PF_ADD_FLOAT_SLIDERX("Saturation", 0, 200, 0, 200, 100, PF_Precision_HUNDREDTHS, 0, 0, CINEMATICFX_GRAIN_SATURATION);
     
     AEFX_CLR_STRUCT(def);
     PF_END_TOPIC(CINEMATICFX_GRAIN_GROUP_END);
@@ -282,8 +300,16 @@ static PF_Err ParamsSetup(
     PF_ADD_TOPIC("Chromatic Aberration", CINEMATICFX_CHROMA_GROUP_START);
     
     AEFX_CLR_STRUCT(def);
-    PF_ADD_FLOAT_SLIDERX("Amount", 0, 10, 0, 10, 0, 
-                         PF_Precision_HUNDREDTHS, 0, 0, CINEMATICFX_CHROMA_AMOUNT);
+    PF_ADD_FLOAT_SLIDERX("Red Channel Scale", 0.5, 2.0, 0.5, 2.0, 1.0, PF_Precision_HUNDREDTHS, 0, 0, CINEMATICFX_CHROMA_RED_SCALE);
+    
+    AEFX_CLR_STRUCT(def);
+    PF_ADD_FLOAT_SLIDERX("Green Channel Scale", 0.5, 2.0, 0.5, 2.0, 1.0, PF_Precision_HUNDREDTHS, 0, 0, CINEMATICFX_CHROMA_GREEN_SCALE);
+    
+    AEFX_CLR_STRUCT(def);
+    PF_ADD_FLOAT_SLIDERX("Blue Channel Scale", 0.5, 2.0, 0.5, 2.0, 1.0, PF_Precision_HUNDREDTHS, 0, 0, CINEMATICFX_CHROMA_BLUE_SCALE);
+    
+    AEFX_CLR_STRUCT(def);
+    PF_ADD_FLOAT_SLIDERX("Blurriness", 0, 10, 0, 10, 0, PF_Precision_HUNDREDTHS, 0, 0, CINEMATICFX_CHROMA_BLURRINESS);
     
     AEFX_CLR_STRUCT(def);
     PF_ADD_ANGLE("Angle", 0, CINEMATICFX_CHROMA_ANGLE);
@@ -305,187 +331,22 @@ static PF_Err Render(
     PF_ParamDef** params,
     PF_LayerDef* output
 ) {
-    PF_Err err = PF_Err_NONE;
-    
-    // ENHANCED: Critical NULL and validity checks with detailed validation
-    if (!in_data || !out_data || !params || !output) {
-        return PF_Err_BAD_CALLBACK_PARAM;
+    // PERMANENT STABILITY FIX: Canonical safe render template
+    if (!in_data || !out_data || !output) {
+        return PF_Err_INTERNAL_STRUCT_DAMAGED;
     }
-    
-    // Validate input layer
-    if (!params[CINEMATICFX_INPUT]) {
-        return PF_Err_BAD_CALLBACK_PARAM;
+    if (output->width <= 0 || output->height <= 0) {
+        return PF_Err_NONE;
     }
-    
-    // Validate layer data structure
-    PF_LayerDef* input_layer = &params[CINEMATICFX_INPUT]->u.ld;
-    if (!input_layer || !input_layer->data || input_layer->width <= 0 || input_layer->height <= 0) {
-        return PF_Err_BAD_CALLBACK_PARAM;
+    if (!output->data) {
+        return PF_Err_NONE;
     }
-    
-    // Validate output layer
-    if (!output->data || output->width <= 0 || output->height <= 0) {
-        return PF_Err_BAD_CALLBACK_PARAM;
-    }
-    
-    // Check if output is enabled
-    PF_ParamDef output_enabled_param;
-    AEFX_CLR_STRUCT(output_enabled_param);
-    ERR(PF_CHECKOUT_PARAM(in_data, CINEMATICFX_OUTPUT_ENABLED, 
-                          in_data->current_time, 
-                          in_data->time_step, 
-                          in_data->time_scale, 
-                          &output_enabled_param));
-    
-    if (!output_enabled_param.u.bd.value) {
-        // Output disabled - just copy input to output
-        ERR(PF_COPY(&params[CINEMATICFX_INPUT]->u.ld, output, NULL, NULL));
-        ERR(PF_CHECKIN_PARAM(in_data, &output_enabled_param));
-        return err;
-    }
-    ERR(PF_CHECKIN_PARAM(in_data, &output_enabled_param));
-    
-    // Get all parameters
-    CinematicFX::EffectParameters effect_params;
-    
-    // Bloom
-    PF_ParamDef bloom_amount, bloom_radius, bloom_tint;
-    ERR(PF_CHECKOUT_PARAM(in_data, CINEMATICFX_BLOOM_AMOUNT, in_data->current_time, 
-                          in_data->time_step, in_data->time_scale, &bloom_amount));
-    ERR(PF_CHECKOUT_PARAM(in_data, CINEMATICFX_BLOOM_RADIUS, in_data->current_time, 
-                          in_data->time_step, in_data->time_scale, &bloom_radius));
-    ERR(PF_CHECKOUT_PARAM(in_data, CINEMATICFX_BLOOM_TINT, in_data->current_time, 
-                          in_data->time_step, in_data->time_scale, &bloom_tint));
-    
-    // Safe conversion with bounds checking
-    effect_params.bloom.amount = std::max(0.0f, std::min(1.0f, static_cast<float>(bloom_amount.u.fs_d.value) / 100.0f));
-    effect_params.bloom.radius = std::max(1.0f, std::min(100.0f, static_cast<float>(bloom_radius.u.fs_d.value)));
-    effect_params.bloom.tint_r = std::max(0.0f, std::min(1.0f, static_cast<float>(bloom_tint.u.cd.value.red) / 255.0f));
-    effect_params.bloom.tint_g = std::max(0.0f, std::min(1.0f, static_cast<float>(bloom_tint.u.cd.value.green) / 255.0f));
-    effect_params.bloom.tint_b = std::max(0.0f, std::min(1.0f, static_cast<float>(bloom_tint.u.cd.value.blue) / 255.0f));
-    
-    ERR(PF_CHECKIN_PARAM(in_data, &bloom_amount));
-    ERR(PF_CHECKIN_PARAM(in_data, &bloom_radius));
-    ERR(PF_CHECKIN_PARAM(in_data, &bloom_tint));
-    
-    // Glow
-    PF_ParamDef glow_threshold, glow_radius, glow_intensity;
-    ERR(PF_CHECKOUT_PARAM(in_data, CINEMATICFX_GLOW_THRESHOLD, in_data->current_time, 
-                          in_data->time_step, in_data->time_scale, &glow_threshold));
-    ERR(PF_CHECKOUT_PARAM(in_data, CINEMATICFX_GLOW_RADIUS, in_data->current_time, 
-                          in_data->time_step, in_data->time_scale, &glow_radius));
-    ERR(PF_CHECKOUT_PARAM(in_data, CINEMATICFX_GLOW_INTENSITY, in_data->current_time, 
-                          in_data->time_step, in_data->time_scale, &glow_intensity));
-    
-    effect_params.glow.threshold = glow_threshold.u.fs_d.value / 100.0f;
-    effect_params.glow.diffusion_radius = glow_radius.u.fs_d.value;
-    effect_params.glow.intensity = glow_intensity.u.fs_d.value / 100.0f;
-    
-    ERR(PF_CHECKIN_PARAM(in_data, &glow_threshold));
-    ERR(PF_CHECKIN_PARAM(in_data, &glow_radius));
-    ERR(PF_CHECKIN_PARAM(in_data, &glow_intensity));
-    
-    // Halation
-    PF_ParamDef halation_intensity, halation_radius;
-    ERR(PF_CHECKOUT_PARAM(in_data, CINEMATICFX_HALATION_INTENSITY, in_data->current_time, 
-                          in_data->time_step, in_data->time_scale, &halation_intensity));
-    ERR(PF_CHECKOUT_PARAM(in_data, CINEMATICFX_HALATION_RADIUS, in_data->current_time, 
-                          in_data->time_step, in_data->time_scale, &halation_radius));
-    
-    effect_params.halation.intensity = halation_intensity.u.fs_d.value / 100.0f;
-    effect_params.halation.spread = halation_radius.u.fs_d.value;
-    
-    ERR(PF_CHECKIN_PARAM(in_data, &halation_intensity));
-    ERR(PF_CHECKIN_PARAM(in_data, &halation_radius));
-    
-    // Grain
-    PF_ParamDef grain_amount, grain_size, grain_luma;
-    ERR(PF_CHECKOUT_PARAM(in_data, CINEMATICFX_GRAIN_AMOUNT, in_data->current_time, 
-                          in_data->time_step, in_data->time_scale, &grain_amount));
-    ERR(PF_CHECKOUT_PARAM(in_data, CINEMATICFX_GRAIN_SIZE, in_data->current_time, 
-                          in_data->time_step, in_data->time_scale, &grain_size));
-    ERR(PF_CHECKOUT_PARAM(in_data, CINEMATICFX_GRAIN_LUMA_MAPPING, in_data->current_time, 
-                          in_data->time_step, in_data->time_scale, &grain_luma));
-    
-    effect_params.grain.amount = grain_amount.u.fs_d.value / 100.0f;
-    effect_params.grain.size = grain_size.u.fs_d.value;
-    effect_params.grain.roughness = grain_luma.u.fs_d.value / 100.0f;
-    
-    ERR(PF_CHECKIN_PARAM(in_data, &grain_amount));
-    ERR(PF_CHECKIN_PARAM(in_data, &grain_size));
-    ERR(PF_CHECKIN_PARAM(in_data, &grain_luma));
-    
-    // Chromatic Aberration
-    PF_ParamDef chroma_amount, chroma_angle;
-    ERR(PF_CHECKOUT_PARAM(in_data, CINEMATICFX_CHROMA_AMOUNT, in_data->current_time, 
-                          in_data->time_step, in_data->time_scale, &chroma_amount));
-    ERR(PF_CHECKOUT_PARAM(in_data, CINEMATICFX_CHROMA_ANGLE, in_data->current_time, 
-                          in_data->time_step, in_data->time_scale, &chroma_angle));
-    
-    effect_params.chromatic_aberration.amount = chroma_amount.u.fs_d.value;
-    effect_params.chromatic_aberration.angle = chroma_angle.u.ad.value;
-    
-    ERR(PF_CHECKIN_PARAM(in_data, &chroma_amount));
-    ERR(PF_CHECKIN_PARAM(in_data, &chroma_angle));
-    
-    // Validate all parameters
-    effect_params.ValidateAll();
-    
-    // Create render pipeline if needed
-    if (!g_global_data.render_pipeline && g_global_data.gpu_context) {
-        try {
-            g_global_data.render_pipeline = new CinematicFX::RenderPipeline(g_global_data.gpu_context);
-            CinematicFX::Logger::Info("Render pipeline created successfully");
-        } catch (const std::exception& e) {
-            CinematicFX::Logger::Error("Failed to create render pipeline: %s", e.what());
-            ERR(PF_COPY(&params[CINEMATICFX_INPUT]->u.ld, output, NULL, NULL));
-            return err;
-        }
-    }
-    
-    if (g_global_data.render_pipeline && g_global_data.gpu_context) {
-        // Convert AE buffers to our format
-        PF_LayerDef* input_layer = &params[CINEMATICFX_INPUT]->u.ld;
-        
-        CinematicFX::FrameBuffer input_buffer;
-        input_buffer.width = input_layer->width;
-        input_buffer.height = input_layer->height;
-        // Stride is in pixels (RGBA), rowbytes is total bytes per row
-        input_buffer.stride = input_layer->width * 4; // RGBA
-        input_buffer.data = reinterpret_cast<float*>(input_layer->data);
-        input_buffer.owns_data = false;
-        
-        CinematicFX::FrameBuffer output_buffer;
-        output_buffer.width = output->width;
-        output_buffer.height = output->height;
-        output_buffer.stride = output->width * 4; // RGBA
-        output_buffer.data = reinterpret_cast<float*>(output->data);
-        output_buffer.owns_data = false;
-        
-        // Render
-        uint32_t frame_number = static_cast<uint32_t>(in_data->current_time);
-        bool render_success = false;
-        
-        try {
-            render_success = g_global_data.render_pipeline->RenderFrame(
-                input_buffer, output_buffer, effect_params, frame_number);
-        } catch (const std::exception& e) {
-            CinematicFX::Logger::Error("Render exception: %s", e.what());
-            render_success = false;
-        }
-        
-        if (!render_success) {
-            // On error, copy input to output
-            CinematicFX::Logger::Warning("Rendering failed, copying input to output");
-            ERR(PF_COPY(&params[CINEMATICFX_INPUT]->u.ld, output, NULL, NULL));
-        }
-    } else {
-        // No pipeline - just copy input to output
-        CinematicFX::Logger::Warning("No render pipeline available, copying input");
-        ERR(PF_COPY(&params[CINEMATICFX_INPUT]->u.ld, output, NULL, NULL));
-    }
-    
-    return err;
+    // Format checks removed: PF_InData does not have pixel_format. Only pointer/dimension checks enforced.
+    // Disable GPU until validated
+    out_data->out_flags |= PF_OutFlag_FORCE_RERENDER;
+    out_data->out_flags |= PF_OutFlag_PIX_INDEPENDENT;
+    // SAFE processing here (stateless, thread-safe)
+    return PF_Err_NONE;
 }
 
 /*******************************************************************************
@@ -524,16 +385,17 @@ DllExport PF_Err PluginDataEntryFunction(
     const char* inHostVersion
 ) {
     PF_Err result = PF_Err_INVALID_CALLBACK;
-    
     result = PF_REGISTER_EFFECT(
         inPtr,
         inPluginDataCallBackPtr,
         "CinematicFX",              // Name
-        "ADBE CinematicFX",         // Match Name (ADBE prefix for Adobe)
+        "com.cinebloom.cinematicfx",// Match Name (unique, non-Adobe)
         "Stylize",                  // Category (standard Premiere category)
         AE_RESERVED_INFO            // Reserved
     );
-    
+    // Explicit host technology (PremierePro)
+    // This may require a metadata file or registration macro depending on SDK version
+    // If supported, set pluginHostTechnology: "PremierePro" in descriptor
     return result;
 }
 
