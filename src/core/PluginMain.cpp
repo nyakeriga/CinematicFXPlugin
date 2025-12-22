@@ -107,57 +107,17 @@ static PF_Err GlobalSetup(
     out_data->name[0] = '\0';
     strncpy(out_data->name, "CinematicFX", sizeof(out_data->name) - 1);
     
-    // Enable 32-bit float processing and proper UI
-    out_data->out_flags = PF_OutFlag_DEEP_COLOR_AWARE |
-                          PF_OutFlag_PIX_INDEPENDENT |
-                          PF_OutFlag_USE_OUTPUT_EXTENT |
-                          PF_OutFlag_I_DO_DIALOG;  // Enable About dialog
-    
-    out_data->out_flags2 = PF_OutFlag2_FLOAT_COLOR_AWARE |
-                           PF_OutFlag2_SUPPORTS_SMART_RENDER |
-                           PF_OutFlag2_SUPPORTS_THREADED_RENDERING |
-                           PF_OutFlag2_DOESNT_NEED_EMPTY_PIXELS |
-                           PF_OutFlag2_REVEALS_ZERO_ALPHA;
-    
-    // Initialize GPU context (once globally)
-    if (!g_global_data.initialized) {
-        CinematicFX::Logger::Initialize(CinematicFX::Logger::LogLevel::INFO);
-        
-        // Try platform-specific GPU backend first, then CPU fallback
-        std::unique_ptr<CinematicFX::GPUContext> gpu_context_ptr;
-        
-#ifdef __APPLE__
-        // macOS: Try Metal first
-        gpu_context_ptr = CinematicFX::GPUContext::Create(CinematicFX::GPUBackendType::METAL);
-        if (gpu_context_ptr) {
-            CinematicFX::Logger::Info("CinematicFX initialized with Metal GPU backend");
-        }
-#elif defined(_WIN32)
-        // Windows: Try CUDA first (if available)
-        #ifdef CINEMATICFX_CUDA_AVAILABLE
-        gpu_context_ptr = CinematicFX::GPUContext::Create(CinematicFX::GPUBackendType::CUDA);
-        if (gpu_context_ptr) {
-            CinematicFX::Logger::Info("CinematicFX initialized with CUDA GPU backend");
-        }
-        #endif
-#endif
-        
-        // Fallback to CPU if GPU failed
-        if (!gpu_context_ptr) {
-            gpu_context_ptr = CinematicFX::GPUContext::Create(CinematicFX::GPUBackendType::CPU);
-            if (gpu_context_ptr) {
-                CinematicFX::Logger::Info("CinematicFX initialized with CPU backend");
-            } else {
-                CinematicFX::Logger::Error("Failed to initialize any backend");
-            }
-        }
-        
-        if (gpu_context_ptr) {
-            g_global_data.gpu_context = gpu_context_ptr.release();
-            g_global_data.initialized = true;
-        }
-    }
-    
+    // Only advertise features that are actually implemented (SAFE BASELINE)
+    out_data->out_flags =
+        PF_OutFlag_PIX_INDEPENDENT |
+        PF_OutFlag_I_DO_DIALOG;
+
+    out_data->out_flags2 = 0;
+
+    // TEMPORARY: Disable all GPU context init for maximum safety
+    g_global_data.gpu_context = nullptr;
+    g_global_data.initialized = true;
+
     return PF_Err_NONE;
 }
 
@@ -331,21 +291,29 @@ static PF_Err Render(
     PF_ParamDef** params,
     PF_LayerDef* output
 ) {
-    // PERMANENT STABILITY FIX: Canonical safe render template
-    if (!in_data || !out_data || !output) {
-        return PF_Err_INTERNAL_STRUCT_DAMAGED;
+    // SAFE PIXEL COPY: No PF_COPY, always overwrite every pixel
+    if (!in_data || !out_data || !params || !output) {
+        return PF_Err_BAD_CALLBACK_PARAM;
     }
-    if (output->width <= 0 || output->height <= 0) {
+
+    PF_LayerDef* input = &params[CINEMATICFX_INPUT]->u.ld;
+
+    if (!input->data || !output->data) {
         return PF_Err_NONE;
     }
-    if (!output->data) {
-        return PF_Err_NONE;
+
+    const int width  = std::min(input->width,  output->width);
+    const int height = std::min(input->height, output->height);
+
+    for (int y = 0; y < height; ++y) {
+        PF_Pixel8* src = (PF_Pixel8*)((char*)input->data + y * input->rowbytes);
+        PF_Pixel8* dst = (PF_Pixel8*)((char*)output->data + y * output->rowbytes);
+
+        for (int x = 0; x < width; ++x) {
+            dst[x] = src[x]; // copy RGBA safely
+        }
     }
-    // Format checks removed: PF_InData does not have pixel_format. Only pointer/dimension checks enforced.
-    // Disable GPU until validated
-    out_data->out_flags |= PF_OutFlag_FORCE_RERENDER;
-    out_data->out_flags |= PF_OutFlag_PIX_INDEPENDENT;
-    // SAFE processing here (stateless, thread-safe)
+
     return PF_Err_NONE;
 }
 
