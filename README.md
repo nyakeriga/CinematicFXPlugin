@@ -192,7 +192,8 @@ Each pass uses intermediate textures (GPU memory pooling for efficiency).
 
 ## Support
 
-**Email:** support@cinematicfx.com  
+**Email:** isabokenock@auroranexa.com  
+**Support:** support@auroranexa.com  
 **Documentation:** https://cinematicfx.com/docs  
 **License Issues:** https://cinematicfx.com/license  
 
@@ -203,13 +204,13 @@ Each pass uses intermediate textures (GPU memory pooling for efficiency).
 
 ## Credits
 
-**Developer:** Pol Casals  
+**Developer:** Enock Isaboke  
 **Architecture:** GPU-accelerated multi-pass pipeline  
 **Inspiration:** FilmConvert, Dehancer, Red Giant Universe  
 
 ## License
 
-Commercial License - Copyright © 2025 Pol Casals  
+Commercial License - Copyright © 2025 Enock Isaboke  
 All rights reserved.
 
 This software is licensed, not sold. Unauthorized distribution prohibited.
