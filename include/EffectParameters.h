@@ -2,7 +2,7 @@
  * CinematicFX - Effect Parameters Structure
  * 
  * All user-controllable parameters with keyframe support
- ******************************************************************************/
+ *******************************************************************************/
 
 #pragma once
 
@@ -65,17 +65,33 @@ namespace CinematicFX {
      * mimicking classic film diffusion filters.
      */
     struct GlowParameters {
-        float threshold;       // Luminance threshold: 0.0 - 1.0 (0.7 = only bright areas)
-        float diffusion_radius; // Glow radius in pixels: 1.0 - 100.0
-        float intensity;       // Glow strength: 0.0 - 2.0
+        float threshold;           // Luminance threshold: 0.0 - 1.0 (0.7 = only bright areas)
+        float radius_x;            // Horizontal glow radius: 1.0 - 100.0
+        float radius_y;            // Vertical glow radius: 1.0 - 100.0
+        float diffusion_radius;    // Average radius for backward compatibility
+        float intensity;           // Glow strength: 0.0 - 2.0
+        float desaturation;        // Color desaturation: 0.0 - 1.0
+        int blend_mode;            // Blend mode: 0=Screen, 1=Add, 2=Normal
+        float tint_r;              // Tint red component: 0.0 - 1.0
+        float tint_g;              // Tint green component: 0.0 - 1.0
+        float tint_b;              // Tint blue component: 0.0 - 1.0
 
         GlowParameters()
-            : threshold(0.7f), diffusion_radius(40.0f), intensity(0.5f) {}
+            : threshold(0.7f), radius_x(40.0f), radius_y(40.0f), diffusion_radius(40.0f),
+              intensity(0.5f), desaturation(0.0f), blend_mode(0),
+              tint_r(1.0f), tint_g(1.0f), tint_b(1.0f) {}
 
         void Validate() {
             threshold = std::fmax(0.0f, std::fmin(1.0f, threshold));
-            diffusion_radius = std::fmax(1.0f, std::fmin(100.0f, diffusion_radius));
+            radius_x = std::fmax(1.0f, std::fmin(100.0f, radius_x));
+            radius_y = std::fmax(1.0f, std::fmin(100.0f, radius_y));
+            diffusion_radius = (radius_x + radius_y) * 0.5f;
             intensity = std::fmax(0.0f, std::fmin(2.0f, intensity));
+            desaturation = std::fmax(0.0f, std::fmin(1.0f, desaturation));
+            blend_mode = std::fmax(0, std::min(2, blend_mode));
+            tint_r = std::fmax(0.0f, std::fmin(1.0f, tint_r));
+            tint_g = std::fmax(0.0f, std::fmin(1.0f, tint_g));
+            tint_b = std::fmax(0.0f, std::fmin(1.0f, tint_b));
         }
     };
 
@@ -105,17 +121,26 @@ namespace CinematicFX {
      * Not random per-frame; stable, cinematic grain.
      */
     struct GrainParameters {
-        float amount;          // Overall grain visibility: 0.0 - 1.0
-        float size;            // Grain texture scale: 0.5 - 5.0
-        float roughness;       // Grain distribution: 0.0 = smooth, 1.0 = rough
+        float shadows_amount;      // Shadows grain intensity: 0.0 - 1.0
+        float mids_amount;         // Midtones grain intensity: 0.0 - 1.0
+        float highlights_amount;   // Highlights grain intensity: 0.0 - 1.0
+        float size;                // Grain texture scale: 0.5 - 5.0
+        float roughness;           // Grain distribution: 0.0 = smooth, 1.0 = rough
+        float saturation;          // Grain color saturation: 0.0 - 2.0
+        float amount;              // Overall grain visibility (legacy): 0.0 - 1.0
 
         GrainParameters()
-            : amount(0.2f), size(1.0f), roughness(0.5f) {}
+            : shadows_amount(0.2f), mids_amount(0.35f), highlights_amount(0.15f),
+              size(1.0f), roughness(0.5f), saturation(1.0f), amount(0.2f) {}
 
         void Validate() {
-            amount = std::fmax(0.0f, std::fmin(1.0f, amount));
+            shadows_amount = std::fmax(0.0f, std::fmin(1.0f, shadows_amount));
+            mids_amount = std::fmax(0.0f, std::fmin(1.0f, mids_amount));
+            highlights_amount = std::fmax(0.0f, std::fmin(1.0f, highlights_amount));
             size = std::fmax(0.5f, std::fmin(5.0f, size));
             roughness = std::fmax(0.0f, std::fmin(1.0f, roughness));
+            saturation = std::fmax(0.0f, std::fmin(2.0f, saturation));
+            amount = std::fmax(0.0f, std::fmin(1.0f, amount));
         }
     };
 
@@ -125,14 +150,23 @@ namespace CinematicFX {
      * RGB channel spatial offset to simulate lens distortion.
      */
     struct ChromaticAberrationParameters {
-        float amount;          // Offset amount in pixels: 0.0 - 10.0
+        float amount;          // Overall aberration intensity: 0.0 - 1.0
+        float red_scale;       // Red channel scale: 0.5 - 2.0
+        float green_scale;     // Green channel scale: 0.5 - 2.0
+        float blue_scale;      // Blue channel scale: 0.5 - 2.0
+        float blurriness;      // Edge softness: 0.0 - 10.0
         float angle;           // Offset direction in degrees: 0.0 - 360.0
 
         ChromaticAberrationParameters()
-            : amount(0.0f), angle(0.0f) {}
+            : amount(0.0f), red_scale(1.0f), green_scale(1.0f), blue_scale(1.0f),
+              blurriness(0.0f), angle(0.0f) {}
 
         void Validate() {
-            amount = std::fmax(0.0f, std::fmin(10.0f, amount));
+            amount = std::fmax(0.0f, std::fmin(1.0f, amount));
+            red_scale = std::fmax(0.5f, std::fmin(2.0f, red_scale));
+            green_scale = std::fmax(0.5f, std::fmin(2.0f, green_scale));
+            blue_scale = std::fmax(0.5f, std::fmin(2.0f, blue_scale));
+            blurriness = std::fmax(0.0f, std::fmin(10.0f, blurriness));
             angle = std::fmod(angle, 360.0f);
             if (angle < 0.0f) angle += 360.0f;
         }
@@ -179,6 +213,9 @@ namespace CinematicFX {
                    (glow.intensity > 0.0f) ||
                    (halation.intensity > 0.0f) ||
                    (grain.amount > 0.0f) ||
+                   (grain.shadows_amount > 0.0f) ||
+                   (grain.mids_amount > 0.0f) ||
+                   (grain.highlights_amount > 0.0f) ||
                    (chromatic_aberration.amount > 0.0f);
         }
     };
@@ -202,10 +239,15 @@ namespace CinematicFX {
             params.bloom.amount = 0.4f;
             params.bloom.radius = 40.0f;
             params.glow.threshold = 0.75f;
+            params.glow.radius_x = 50.0f;
+            params.glow.radius_y = 50.0f;
             params.glow.diffusion_radius = 50.0f;
             params.glow.intensity = 0.6f;
+            params.glow.blend_mode = 0; // Screen
             params.halation.intensity = 0.3f;
-            params.grain.amount = 0.15f;
+            params.grain.shadows_amount = 0.15f;
+            params.grain.mids_amount = 0.15f;
+            params.grain.highlights_amount = 0.15f;
             return params;
         }
 
@@ -217,9 +259,15 @@ namespace CinematicFX {
             params.bloom.tint_b = 0.85f;
             params.halation.intensity = 0.6f;
             params.halation.spread = 20.0f;
-            params.grain.amount = 0.35f;
+            params.grain.shadows_amount = 0.35f;
+            params.grain.mids_amount = 0.25f;
+            params.grain.highlights_amount = 0.15f;
             params.grain.size = 1.5f;
-            params.chromatic_aberration.amount = 2.0f;
+            params.chromatic_aberration.amount = 0.2f;
+            params.chromatic_aberration.blurriness = 2.0f;
+            params.chromatic_aberration.red_scale = 1.1f;
+            params.chromatic_aberration.green_scale = 1.0f;
+            params.chromatic_aberration.blue_scale = 0.9f;
             return params;
         }
 
@@ -228,15 +276,22 @@ namespace CinematicFX {
             params.bloom.amount = 0.6f;
             params.bloom.radius = 60.0f;
             params.glow.threshold = 0.6f;
+            params.glow.radius_x = 80.0f;
+            params.glow.radius_y = 80.0f;
             params.glow.diffusion_radius = 80.0f;
             params.glow.intensity = 0.8f;
-            params.grain.amount = 0.1f;
+            params.glow.desaturation = 0.2f;
+            params.grain.shadows_amount = 0.1f;
+            params.grain.mids_amount = 0.15f;
+            params.grain.highlights_amount = 0.05f;
             return params;
         }
 
         inline EffectParameters SubtleGrain() {
             EffectParameters params;
-            params.grain.amount = 0.25f;
+            params.grain.shadows_amount = 0.25f;
+            params.grain.mids_amount = 0.15f;
+            params.grain.highlights_amount = 0.1f;
             params.grain.size = 0.8f;
             params.grain.roughness = 0.3f;
             return params;

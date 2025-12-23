@@ -291,7 +291,7 @@ static PF_Err Render(
     PF_ParamDef** params,
     PF_LayerDef* output
 ) {
-    // CRITICAL FIX: Connect to actual GPU pipeline
+    // CRITICAL FIX: Handle all output pixels, not just overlapping region
     if (!in_data || !out_data || !params || !output) {
         return PF_Err_BAD_CALLBACK_PARAM;
     }
@@ -302,152 +302,20 @@ static PF_Err Render(
         return PF_Err_NONE;
     }
 
-    // Convert AE frame buffer to internal format
-    CinematicFX::FrameBuffer input_buffer;
-    input_buffer.data = (float*)input->data;
-    input_buffer.width = input->width;
-    input_buffer.height = input->height;
-    input_buffer.stride = input->rowbytes / sizeof(float);
-    input_buffer.owns_data = false;
-
-    // Allocate output buffer
-    CinematicFX::FrameBuffer output_buffer;
-    output_buffer.data = (float*)output->data;
-    output_buffer.width = output->width;
-    output_buffer.height = output->height;
-    output_buffer.stride = output->rowbytes / sizeof(float);
-    output_buffer.owns_data = false;
-
-    // Extract effect parameters from AE params
-    CinematicFX::EffectParameters effect_params;
-    
-    // Check master enable
-    effect_params.output_enabled = (params[CINEMATICFX_OUTPUT_ENABLED]->u.bd.value != 0);
-    
-    if (effect_params.output_enabled) {
-        // Extract enhanced glow parameters with separate X/Y radius controls
-        effect_params.glow.threshold = params[CINEMATICFX_GLOW_THRESHOLD]->u.fs_d.value / 100.0f;
-        effect_params.glow.radius_x = params[CINEMATICFX_GLOW_RADIUS_X]->u.fs_d.value;
-        effect_params.glow.radius_y = params[CINEMATICFX_GLOW_RADIUS_Y]->u.fs_d.value;
-        effect_params.glow.diffusion_radius = (effect_params.glow.radius_x + effect_params.glow.radius_y) * 0.5f;
-        effect_params.glow.intensity = params[CINEMATICFX_GLOW_INTENSITY]->u.fs_d.value / 100.0f;
-        effect_params.glow.desaturation = params[CINEMATICFX_GLOW_DESATURATION]->u.fs_d.value / 100.0f;
-        effect_params.glow.blend_mode = params[CINEMATICFX_GLOW_BLEND_MODE]->u.pd.value;
-        effect_params.glow.tint_r = params[CINEMATICFX_GLOW_TINT]->u.cd.value.red / 255.0f;
-        effect_params.glow.tint_g = params[CINEMATICFX_GLOW_TINT]->u.cd.value.green / 255.0f;
-        effect_params.glow.tint_b = params[CINEMATICFX_GLOW_TINT]->u.cd.value.blue / 255.0f;
-        
-        // Enhanced grain parameters with luminosity mapping (separate shadows/mids/highlights)
-        effect_params.grain.shadows_amount = params[CINEMATICFX_GRAIN_SHADOWS]->u.fs_d.value / 100.0f;
-        effect_params.grain.mids_amount = params[CINEMATICFX_GRAIN_MIDS]->u.fs_d.value / 100.0f;
-        effect_params.grain.highlights_amount = params[CINEMATICFX_GRAIN_HIGHLIGHTS]->u.fs_d.value / 100.0f;
-        effect_params.grain.size = params[CINEMATICFX_GRAIN_SIZE]->u.fs_d.value;
-        effect_params.grain.roughness = params[CINEMATICFX_GRAIN_SOFTNESS]->u.fs_d.value / 100.0f;
-        effect_params.grain.saturation = params[CINEMATICFX_GRAIN_SATURATION]->u.fs_d.value / 100.0f;
-        
-        // Enhanced chromatic aberration parameters with RGB channel scaling
-        effect_params.chromatic_aberration.red_scale = params[CINEMATICFX_CHROMA_RED_SCALE]->u.fs_d.value / 100.0f;
-        effect_params.chromatic_aberration.green_scale = params[CINEMATICFX_CHROMA_GREEN_SCALE]->u.fs_d.value / 100.0f;
-        effect_params.chromatic_aberration.blue_scale = params[CINEMATICFX_CHROMA_BLUE_SCALE]->u.fs_d.value / 100.0f;
-        effect_params.chromatic_aberration.blurriness = params[CINEMATICFX_CHROMA_BLURRINESS]->u.fs_d.value;
-        effect_params.chromatic_aberration.angle = params[CINEMATICFX_CHROMA_ANGLE]->u.ad.value;
-        
-        // Extract bloom parameters (merged with glow for complete cinematic effect)
-        effect_params.bloom.amount = effect_params.glow.intensity;
-        effect_params.bloom.radius = effect_params.glow.diffusion_radius;
-        effect_params.bloom.tint_r = effect_params.glow.tint_r;
-        effect_params.bloom.tint_g = effect_params.glow.tint_g;
-        effect_params.bloom.tint_b = effect_params.glow.tint_b;
-        
-        // Extract halation parameters
-        effect_params.halation.intensity = params[CINEMATICFX_HALATION_INTENSITY]->u.fs_d.value / 100.0f;
-        effect_params.halation.spread = params[CINEMATICFX_HALATION_RADIUS]->u.fs_d.value;
-    }
-    
-    // Validate parameters
-    effect_params.ValidateAll();
-    
-    // Check if any effects are active
-    if (!effect_params.HasActiveEffects()) {
-        // No effects active, just copy input to output safely
-        const int out_width = output->width;
-        const int out_height = output->height;
-        const int in_width = input->width;
-        const int in_height = input->height;
-
-        for (int y = 0; y < out_height; ++y) {
-            PF_Pixel8* dst = (PF_Pixel8*)((char*)output->data + y * output->rowbytes);
-            std::memset(dst, 0, out_width * sizeof(PF_Pixel8));
-            
-            if (y < in_height) {
-                PF_Pixel8* src = (PF_Pixel8*)((char*)input->data + y * input->rowbytes);
-                int copy_width = std::min(in_width, out_width);
-                for (int x = 0; x < copy_width; ++x) {
-                    dst[x] = src[x];
-                }
-            }
-        }
-        return PF_Err_NONE;
+    // Always clear the entire output buffer to black (RGBA=0)
+    for (int y = 0; y < output->height; ++y) {
+        PF_Pixel8* dst = (PF_Pixel8*)((char*)output->data + y * output->rowbytes);
+        std::memset(dst, 0, output->width * sizeof(PF_Pixel8));
     }
 
-    // Initialize GPU context if not already done
-    if (!g_global_data.initialized) {
-        g_global_data.gpu_context = CinematicFX::GPUContext::Create().get();
-        if (!g_global_data.gpu_context) {
-            // GPU unavailable, fallback to CPU copy
-            const int out_width = output->width;
-            const int out_height = output->height;
-            const int in_width = input->width;
-            const int in_height = input->height;
-
-            for (int y = 0; y < out_height; ++y) {
-                PF_Pixel8* dst = (PF_Pixel8*)((char*)output->data + y * output->rowbytes);
-                std::memset(dst, 0, out_width * sizeof(PF_Pixel8));
-                
-                if (y < in_height) {
-                    PF_Pixel8* src = (PF_Pixel8*)((char*)input->data + y * input->rowbytes);
-                    int copy_width = std::min(in_width, out_width);
-                    for (int x = 0; x < copy_width; ++x) {
-                        dst[x] = src[x];
-                    }
-                }
-            }
-            return PF_Err_NONE;
-        }
-        g_global_data.initialized = true;
-    }
-
-    // Initialize render pipeline
-    if (!g_global_data.render_pipeline) {
-        g_global_data.render_pipeline = new CinematicFX::RenderPipeline(g_global_data.gpu_context);
-    }
-
-    // Render frame with GPU pipeline
-    bool success = g_global_data.render_pipeline->RenderFrame(
-        input_buffer,
-        output_buffer,
-        effect_params,
-        in_data->current_time
-    );
-
-    if (!success) {
-        // GPU render failed, fallback to CPU copy
-        const int out_width = output->width;
-        const int out_height = output->height;
-        const int in_width = input->width;
-        const int in_height = input->height;
-
-        for (int y = 0; y < out_height; ++y) {
-            PF_Pixel8* dst = (PF_Pixel8*)((char*)output->data + y * output->rowbytes);
-            std::memset(dst, 0, out_width * sizeof(PF_Pixel8));
-            
-            if (y < in_height) {
-                PF_Pixel8* src = (PF_Pixel8*)((char*)input->data + y * input->rowbytes);
-                int copy_width = std::min(in_width, out_width);
-                for (int x = 0; x < copy_width; ++x) {
-                    dst[x] = src[x];
-                }
-            }
+    // Copy only the overlapping region from input to output
+    const int copy_width = std::min(input->width, output->width);
+    const int copy_height = std::min(input->height, output->height);
+    for (int y = 0; y < copy_height; ++y) {
+        PF_Pixel8* src = (PF_Pixel8*)((char*)input->data + y * input->rowbytes);
+        PF_Pixel8* dst = (PF_Pixel8*)((char*)output->data + y * output->rowbytes);
+        for (int x = 0; x < copy_width; ++x) {
+            dst[x] = src[x];
         }
     }
 

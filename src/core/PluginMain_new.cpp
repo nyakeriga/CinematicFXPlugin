@@ -325,43 +325,33 @@ static PF_Err Render(
     effect_params.output_enabled = (params[CINEMATICFX_OUTPUT_ENABLED]->u.bd.value != 0);
     
     if (effect_params.output_enabled) {
-        // Extract enhanced glow parameters with separate X/Y radius controls
-        effect_params.glow.threshold = params[CINEMATICFX_GLOW_THRESHOLD]->u.fs_d.value / 100.0f;
-        effect_params.glow.radius_x = params[CINEMATICFX_GLOW_RADIUS_X]->u.fs_d.value;
-        effect_params.glow.radius_y = params[CINEMATICFX_GLOW_RADIUS_Y]->u.fs_d.value;
-        effect_params.glow.diffusion_radius = (effect_params.glow.radius_x + effect_params.glow.radius_y) * 0.5f;
-        effect_params.glow.intensity = params[CINEMATICFX_GLOW_INTENSITY]->u.fs_d.value / 100.0f;
-        effect_params.glow.desaturation = params[CINEMATICFX_GLOW_DESATURATION]->u.fs_d.value / 100.0f;
-        effect_params.glow.blend_mode = params[CINEMATICFX_GLOW_BLEND_MODE]->u.pd.value;
-        effect_params.glow.tint_r = params[CINEMATICFX_GLOW_TINT]->u.cd.value.red / 255.0f;
-        effect_params.glow.tint_g = params[CINEMATICFX_GLOW_TINT]->u.cd.value.green / 255.0f;
-        effect_params.glow.tint_b = params[CINEMATICFX_GLOW_TINT]->u.cd.value.blue / 255.0f;
+        // Extract bloom parameters
+        effect_params.bloom.amount = params[CINEMATICFX_GLOW_THRESHOLD]->u.fs_d.value / 100.0f;
+        effect_params.bloom.radius = params[CINEMATICFX_GLOW_RADIUS_X]->u.fs_d.value;
+        effect_params.bloom.tint_r = params[CINEMATICFX_GLOW_TINT]->u.cd.value.red / 255.0f;
+        effect_params.bloom.tint_g = params[CINEMATICFX_GLOW_TINT]->u.cd.value.green / 255.0f;
+        effect_params.bloom.tint_b = params[CINEMATICFX_GLOW_TINT]->u.cd.value.blue / 255.0f;
         
-        // Enhanced grain parameters with luminosity mapping (separate shadows/mids/highlights)
-        effect_params.grain.shadows_amount = params[CINEMATICFX_GRAIN_SHADOWS]->u.fs_d.value / 100.0f;
-        effect_params.grain.mids_amount = params[CINEMATICFX_GRAIN_MIDS]->u.fs_d.value / 100.0f;
-        effect_params.grain.highlights_amount = params[CINEMATICFX_GRAIN_HIGHLIGHTS]->u.fs_d.value / 100.0f;
+        // Extract glow parameters
+        effect_params.glow.threshold = params[CINEMATICFX_GLOW_THRESHOLD]->u.fs_d.value / 100.0f;
+        effect_params.glow.diffusion_radius = (params[CINEMATICFX_GLOW_RADIUS_X]->u.fs_d.value + params[CINEMATICFX_GLOW_RADIUS_Y]->u.fs_d.value) * 0.5f;
+        effect_params.glow.intensity = params[CINEMATICFX_GLOW_INTENSITY]->u.fs_d.value / 100.0f;
+        
+        // Extract halation parameters
+        effect_params.halation.intensity = params[CINEMATICFX_HALATION_INTENSITY]->u.fs_d.value / 100.0f;
+        effect_params.halation.spread = params[CINEMATICFX_HALATION_RADIUS]->u.fs_d.value;
+        
+        // Extract grain parameters
+        effect_params.grain.amount = params[CINEMATICFX_GRAIN_SHADOWS]->u.fs_d.value / 100.0f;
         effect_params.grain.size = params[CINEMATICFX_GRAIN_SIZE]->u.fs_d.value;
         effect_params.grain.roughness = params[CINEMATICFX_GRAIN_SOFTNESS]->u.fs_d.value / 100.0f;
-        effect_params.grain.saturation = params[CINEMATICFX_GRAIN_SATURATION]->u.fs_d.value / 100.0f;
         
-        // Enhanced chromatic aberration parameters with RGB channel scaling
+        // Extract chromatic aberration parameters
         effect_params.chromatic_aberration.red_scale = params[CINEMATICFX_CHROMA_RED_SCALE]->u.fs_d.value / 100.0f;
         effect_params.chromatic_aberration.green_scale = params[CINEMATICFX_CHROMA_GREEN_SCALE]->u.fs_d.value / 100.0f;
         effect_params.chromatic_aberration.blue_scale = params[CINEMATICFX_CHROMA_BLUE_SCALE]->u.fs_d.value / 100.0f;
         effect_params.chromatic_aberration.blurriness = params[CINEMATICFX_CHROMA_BLURRINESS]->u.fs_d.value;
         effect_params.chromatic_aberration.angle = params[CINEMATICFX_CHROMA_ANGLE]->u.ad.value;
-        
-        // Extract bloom parameters (merged with glow for complete cinematic effect)
-        effect_params.bloom.amount = effect_params.glow.intensity;
-        effect_params.bloom.radius = effect_params.glow.diffusion_radius;
-        effect_params.bloom.tint_r = effect_params.glow.tint_r;
-        effect_params.bloom.tint_g = effect_params.glow.tint_g;
-        effect_params.bloom.tint_b = effect_params.glow.tint_b;
-        
-        // Extract halation parameters
-        effect_params.halation.intensity = params[CINEMATICFX_HALATION_INTENSITY]->u.fs_d.value / 100.0f;
-        effect_params.halation.spread = params[CINEMATICFX_HALATION_RADIUS]->u.fs_d.value;
     }
     
     // Validate parameters
@@ -392,7 +382,7 @@ static PF_Err Render(
 
     // Initialize GPU context if not already done
     if (!g_global_data.initialized) {
-        g_global_data.gpu_context = CinematicFX::GPUContext::Create().get();
+        g_global_data.gpu_context = CinematicFX::GPUContext::Create();
         if (!g_global_data.gpu_context) {
             // GPU unavailable, fallback to CPU copy
             const int out_width = output->width;
