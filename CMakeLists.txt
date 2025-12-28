@@ -144,7 +144,7 @@ endif()
 ################################################################################
 
 set(CORE_SOURCES
-    src/core/PluginMain.cpp
+    src/core/PluginMain_fixed.cpp
     src/core/RenderPipeline.cpp
     src/gpu/GPUContext.cpp
 )
@@ -163,6 +163,7 @@ endif()
 set(UTIL_SOURCES
     src/utils/MathUtils.cpp
     src/utils/Logger.cpp
+    src/utils/ColorConversion.cpp
 )
 
 ################################################################################

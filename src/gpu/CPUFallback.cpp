@@ -143,48 +143,54 @@ GPUTexture CPUFallback::AllocateTexture(uint32_t width, uint32_t height) {
 void CPUFallback::ExecuteBloom(
     GPUTexture input_texture,
     GPUTexture output_texture,
-    const BloomParameters& params
+    const BloomParameters& params,
+    uint32_t width,
+    uint32_t height
 ) {
     auto* input = GetCPUTexture(input_texture);
     auto* output = GetCPUTexture(output_texture);
-    
+
     if (!input || !output) {
         Logger::Error("CPUFallback: Invalid texture in ExecuteBloom");
         return;
     }
-    
+
     BloomCPU(input, output, params);
 }
 
 void CPUFallback::ExecuteGlow(
     GPUTexture input_texture,
     GPUTexture output_texture,
-    const GlowParameters& params
+    const GlowParameters& params,
+    uint32_t width,
+    uint32_t height
 ) {
     auto* input = GetCPUTexture(input_texture);
     auto* output = GetCPUTexture(output_texture);
-    
+
     if (!input || !output) {
         Logger::Error("CPUFallback: Invalid texture in ExecuteGlow");
         return;
     }
-    
+
     GlowCPU(input, output, params);
 }
 
 void CPUFallback::ExecuteHalation(
     GPUTexture input_texture,
     GPUTexture output_texture,
-    const HalationParameters& params
+    const HalationParameters& params,
+    uint32_t width,
+    uint32_t height
 ) {
     auto* input = GetCPUTexture(input_texture);
     auto* output = GetCPUTexture(output_texture);
-    
+
     if (!input || !output) {
         Logger::Error("CPUFallback: Invalid texture in ExecuteHalation");
         return;
     }
-    
+
     HalationCPU(input, output, params);
 }
 
@@ -192,32 +198,36 @@ void CPUFallback::ExecuteGrain(
     GPUTexture input_texture,
     GPUTexture output_texture,
     const GrainParameters& params,
-    uint32_t frame_number
+    uint32_t frame_number,
+    uint32_t width,
+    uint32_t height
 ) {
     auto* input = GetCPUTexture(input_texture);
     auto* output = GetCPUTexture(output_texture);
-    
+
     if (!input || !output) {
         Logger::Error("CPUFallback: Invalid texture in ExecuteGrain");
         return;
     }
-    
+
     GrainCPU(input, output, params, frame_number);
 }
 
 void CPUFallback::ExecuteChromaticAberration(
     GPUTexture input_texture,
     GPUTexture output_texture,
-    const ChromaticAberrationParameters& params
+    const ChromaticAberrationParameters& params,
+    uint32_t width,
+    uint32_t height
 ) {
     auto* input = GetCPUTexture(input_texture);
     auto* output = GetCPUTexture(output_texture);
-    
+
     if (!input || !output) {
         Logger::Error("CPUFallback: Invalid texture in ExecuteChromaticAberration");
         return;
     }
-    
+
     ChromaticAberrationCPU(input, output, params);
 }
 

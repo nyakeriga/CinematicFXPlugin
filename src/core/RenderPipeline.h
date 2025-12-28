@@ -60,10 +60,14 @@ namespace CinematicFX {
     private:
         GPUContext* gpu_context_;
         std::unique_ptr<TextureManager> texture_manager_;
-        
+
         QualityPreset quality_preset_;
         bool profiling_enabled_;
         float last_frame_time_ms_;
+
+        // Current frame dimensions
+        uint32_t width_;
+        uint32_t height_;
 
         // Intermediate textures (reused across frames)
         GPUTexture temp_texture_1_;

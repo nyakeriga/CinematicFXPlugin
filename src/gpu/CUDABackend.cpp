@@ -216,19 +216,30 @@ void CUDABackend::ReleaseTexture(GPUTexture texture) {
     }
 }
 
-bool CUDABackend::UploadTexture(GPUTexture dst, const FrameBuffer& src) {
-    size_t size = src.width * src.height * 4 * sizeof(float);
-    
-    cudaError_t err = cudaMemcpyAsync(dst, src.data, size,
-                                      cudaMemcpyHostToDevice,
-                                      cuda_ctx_->stream);
-    
+GPUTexture CUDABackend::UploadTexture(const FrameBuffer& buffer) {
+    size_t size = buffer.width * buffer.height * 4 * sizeof(float);
+
+    void* device_ptr = nullptr;
+    cudaError_t err = cudaMalloc(&device_ptr, size);
+
     if (err != cudaSuccess) {
-        Logger::Error("CUDA: Upload failed: %s", cudaGetErrorString(err));
-        return false;
+        Logger::Error("CUDA: Failed to allocate texture (%ux%u): %s",
+                      buffer.width, buffer.height, cudaGetErrorString(err));
+        return nullptr;
     }
-    
-    return true;
+
+    // Upload data
+    err = cudaMemcpyAsync(device_ptr, buffer.data, size,
+                         cudaMemcpyHostToDevice, cuda_ctx_->stream);
+
+    if (err != cudaSuccess) {
+        cudaFree(device_ptr);
+        Logger::Error("CUDA: Upload failed: %s", cudaGetErrorString(err));
+        return nullptr;
+    }
+
+    cuda_ctx_->allocated_buffers.push_back(device_ptr);
+    return device_ptr;
 }
 
 bool CUDABackend::DownloadTexture(const GPUTexture src, FrameBuffer& dst) {
@@ -249,117 +260,137 @@ bool CUDABackend::DownloadTexture(const GPUTexture src, FrameBuffer& dst) {
     return true;
 }
 
-bool CUDABackend::ExecuteBloom(GPUTexture input, GPUTexture output, GPUTexture temp,
-                               uint32_t width, uint32_t height,
-                               const BloomParameters& params) {
+void CUDABackend::ExecuteBloom(GPUTexture input, GPUTexture output,
+                                const BloomParameters& params,
+                                uint32_t width, uint32_t height) {
+    // Allocate temporary texture for intermediate passes
+    GPUTexture temp = AllocateTexture(width, height);
+    if (!temp) {
+        Logger::Error("CUDA: Failed to allocate temp texture for bloom");
+        return;
+    }
+
     // Pass 1: Extract bright areas with shadow lift
     bloom_extract_cuda((const float*)input, (float*)temp,
-                       width, height,
-                       params.threshold, params.shadow_lift,
-                       cuda_ctx_->stream);
-    
+                        width, height,
+                        params.threshold, params.shadow_lift,
+                        cuda_ctx_->stream);
+
     // Pass 2: Horizontal blur
     bloom_blur_horizontal_cuda((const float*)temp, (float*)output,
-                               width, height,
-                               params.radius,
-                               cuda_ctx_->stream);
-    
+                                width, height,
+                                params.radius,
+                                cuda_ctx_->stream);
+
     // Pass 3: Vertical blur
     bloom_blur_vertical_cuda((const float*)output, (float*)temp,
-                             width, height,
-                             params.radius,
-                             cuda_ctx_->stream);
-    
+                              width, height,
+                              params.radius,
+                              cuda_ctx_->stream);
+
     // Pass 4: Blend with original using tint
     bloom_blend_cuda((const float*)input, (const float*)temp, (float*)output,
-                     width, height,
-                     params.amount, params.tint_r, params.tint_g, params.tint_b,
-                     cuda_ctx_->stream);
-    
-    return true;
+                      width, height,
+                      params.amount, params.tint_r, params.tint_g, params.tint_b,
+                      cuda_ctx_->stream);
+
+    // Cleanup
+    ReleaseTexture(temp);
 }
 
-bool CUDABackend::ExecuteGlow(GPUTexture input, GPUTexture output, GPUTexture temp,
-                              uint32_t width, uint32_t height,
-                              const GlowParameters& params) {
+void CUDABackend::ExecuteGlow(GPUTexture input, GPUTexture output,
+                               const GlowParameters& params,
+                               uint32_t width, uint32_t height) {
+    // Allocate temporary texture for intermediate passes
+    GPUTexture temp = AllocateTexture(width, height);
+    if (!temp) {
+        Logger::Error("CUDA: Failed to allocate temp texture for glow");
+        return;
+    }
+
     // Pass 1: Extract highlights above threshold
     glow_extract_cuda((const float*)input, (float*)temp,
-                      width, height,
-                      params.threshold,
-                      cuda_ctx_->stream);
-    
+                       width, height,
+                       params.threshold,
+                       cuda_ctx_->stream);
+
     // Pass 2: Large blur for diffusion
     glow_blur_cuda((const float*)temp, (float*)output,
-                   width, height,
-                   params.diffusion_radius,
-                   cuda_ctx_->stream);
-    
+                    width, height,
+                    params.diffusion_radius,
+                    cuda_ctx_->stream);
+
     // Pass 3: Blend with original
     glow_blend_cuda((const float*)input, (const float*)output, (float*)temp,
-                    width, height,
-                    params.intensity,
-                    cuda_ctx_->stream);
-    
+                     width, height,
+                     params.intensity,
+                     cuda_ctx_->stream);
+
     // Copy result back to output
     cudaMemcpyAsync(output, temp,
-                    width * height * 4 * sizeof(float),
-                    cudaMemcpyDeviceToDevice,
-                    cuda_ctx_->stream);
-    
-    return true;
+                     width * height * 4 * sizeof(float),
+                     cudaMemcpyDeviceToDevice,
+                     cuda_ctx_->stream);
+
+    // Cleanup
+    ReleaseTexture(temp);
 }
 
-bool CUDABackend::ExecuteHalation(GPUTexture input, GPUTexture output, GPUTexture temp,
-                                  uint32_t width, uint32_t height,
-                                  const HalationParameters& params) {
+void CUDABackend::ExecuteHalation(GPUTexture input, GPUTexture output,
+                                   const HalationParameters& params,
+                                   uint32_t width, uint32_t height) {
+    // Allocate temporary texture for intermediate passes
+    GPUTexture temp = AllocateTexture(width, height);
+    if (!temp) {
+        Logger::Error("CUDA: Failed to allocate temp texture for halation");
+        return;
+    }
+
     // Pass 1: Extract extreme highlights (red channel only)
     halation_extract_cuda((const float*)input, (float*)temp,
-                          width, height,
-                          0.9f, // High threshold for halation
-                          cuda_ctx_->stream);
-    
+                           width, height,
+                           0.9f, // High threshold for halation
+                           cuda_ctx_->stream);
+
     // Pass 2: Blur the red fringe
     halation_blur_cuda((const float*)temp, (float*)output,
-                       width, height,
-                       params.spread,
-                       cuda_ctx_->stream);
-    
+                        width, height,
+                        params.spread,
+                        cuda_ctx_->stream);
+
     // Pass 3: Blend red fringe with original
     halation_blend_cuda((const float*)input, (const float*)output, (float*)temp,
-                        width, height,
-                        params.intensity,
-                        cuda_ctx_->stream);
-    
+                         width, height,
+                         params.intensity,
+                         cuda_ctx_->stream);
+
     // Copy result back to output
     cudaMemcpyAsync(output, temp,
-                    width * height * 4 * sizeof(float),
-                    cudaMemcpyDeviceToDevice,
-                    cuda_ctx_->stream);
-    
-    return true;
-}
-
-bool CUDABackend::ExecuteGrain(GPUTexture input, GPUTexture output,
-                               uint32_t width, uint32_t height,
-                               const GrainParameters& params, int frame_number) {
-    grain_apply_cuda((const float*)input, (float*)output,
-                     width, height,
-                     params.amount, params.size, params.roughness,
-                     frame_number,
+                     width * height * 4 * sizeof(float),
+                     cudaMemcpyDeviceToDevice,
                      cuda_ctx_->stream);
-    
-    return true;
+
+    // Cleanup
+    ReleaseTexture(temp);
 }
 
-bool CUDABackend::ExecuteChromaticAberration(GPUTexture input, GPUTexture output,
-                                             uint32_t width, uint32_t height,
-                                             const ChromaticAberrationParameters& params) {
+void CUDABackend::ExecuteGrain(GPUTexture input, GPUTexture output,
+                                const GrainParameters& params, uint32_t frame_number,
+                                uint32_t width, uint32_t height) {
+    grain_apply_cuda((const float*)input, (float*)output,
+                      width, height,
+                      params.amount, params.size, params.roughness,
+                      frame_number,
+                      cuda_ctx_->stream);
+}
+
+void CUDABackend::ExecuteChromaticAberration(GPUTexture input, GPUTexture output,
+                                              const ChromaticAberrationParameters& params,
+                                              uint32_t width, uint32_t height) {
     chromatic_aberration_apply_cuda((const float*)input, (float*)output,
-                                     width, height,
-                                     params.amount, params.angle,
-                                     cuda_ctx_->stream);
-    
-    return true;
+                                      width, height,
+                                      params.amount, params.angle,
+                                      cuda_ctx_->stream);
 }
 
 void CUDABackend::Synchronize() {
@@ -379,11 +410,11 @@ GPUTexture CUDABackend::UploadTexture(const FrameBuffer& buffer) { (void)buffer;
 bool CUDABackend::DownloadTexture(GPUTexture texture, FrameBuffer& buffer) { (void)texture; (void)buffer; return false; }
 void CUDABackend::ReleaseTexture(GPUTexture texture) { (void)texture; }
 GPUTexture CUDABackend::AllocateTexture(uint32_t width, uint32_t height) { (void)width; (void)height; return nullptr; }
-void CUDABackend::ExecuteBloom(GPUTexture input, GPUTexture output, const BloomParameters& params) { (void)input; (void)output; (void)params; }
-void CUDABackend::ExecuteGlow(GPUTexture input, GPUTexture output, const GlowParameters& params) { (void)input; (void)output; (void)params; }
-void CUDABackend::ExecuteHalation(GPUTexture input, GPUTexture output, const HalationParameters& params) { (void)input; (void)output; (void)params; }
-void CUDABackend::ExecuteGrain(GPUTexture input, GPUTexture output, const GrainParameters& params, uint32_t frame_number) { (void)input; (void)output; (void)params; (void)frame_number; }
-void CUDABackend::ExecuteChromaticAberration(GPUTexture input, GPUTexture output, const ChromaticAberrationParameters& params) { (void)input; (void)output; (void)params; }
+void CUDABackend::ExecuteBloom(GPUTexture input, GPUTexture output, const BloomParameters& params, uint32_t width, uint32_t height) { (void)input; (void)output; (void)params; (void)width; (void)height; }
+void CUDABackend::ExecuteGlow(GPUTexture input, GPUTexture output, const GlowParameters& params, uint32_t width, uint32_t height) { (void)input; (void)output; (void)params; (void)width; (void)height; }
+void CUDABackend::ExecuteHalation(GPUTexture input, GPUTexture output, const HalationParameters& params, uint32_t width, uint32_t height) { (void)input; (void)output; (void)params; (void)width; (void)height; }
+void CUDABackend::ExecuteGrain(GPUTexture input, GPUTexture output, const GrainParameters& params, uint32_t frame_number, uint32_t width, uint32_t height) { (void)input; (void)output; (void)params; (void)frame_number; (void)width; (void)height; }
+void CUDABackend::ExecuteChromaticAberration(GPUTexture input, GPUTexture output, const ChromaticAberrationParameters& params, uint32_t width, uint32_t height) { (void)input; (void)output; (void)params; (void)width; (void)height; }
 void CUDABackend::Synchronize() {}
 
 #endif // CINEMATICFX_CUDA_AVAILABLE

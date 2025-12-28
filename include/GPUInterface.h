@@ -122,11 +122,15 @@ namespace CinematicFX {
          * @param input Input GPU texture
          * @param output Output GPU texture
          * @param params Bloom parameters
+         * @param width Frame width
+         * @param height Frame height
          */
         virtual void ExecuteBloom(
             GPUTexture input,
             GPUTexture output,
-            const BloomParameters& params
+            const BloomParameters& params,
+            uint32_t width,
+            uint32_t height
         ) = 0;
 
         /**
@@ -134,11 +138,15 @@ namespace CinematicFX {
          * @param input Input GPU texture
          * @param output Output GPU texture
          * @param params Glow parameters
+         * @param width Frame width
+         * @param height Frame height
          */
         virtual void ExecuteGlow(
             GPUTexture input,
             GPUTexture output,
-            const GlowParameters& params
+            const GlowParameters& params,
+            uint32_t width,
+            uint32_t height
         ) = 0;
 
         /**
@@ -146,11 +154,15 @@ namespace CinematicFX {
          * @param input Input GPU texture
          * @param output Output GPU texture
          * @param params Halation parameters
+         * @param width Frame width
+         * @param height Frame height
          */
         virtual void ExecuteHalation(
             GPUTexture input,
             GPUTexture output,
-            const HalationParameters& params
+            const HalationParameters& params,
+            uint32_t width,
+            uint32_t height
         ) = 0;
 
         /**
@@ -159,12 +171,16 @@ namespace CinematicFX {
          * @param output Output GPU texture
          * @param params Grain parameters
          * @param frame_number Frame number for temporal stability
+         * @param width Frame width
+         * @param height Frame height
          */
         virtual void ExecuteGrain(
             GPUTexture input,
             GPUTexture output,
             const GrainParameters& params,
-            uint32_t frame_number
+            uint32_t frame_number,
+            uint32_t width,
+            uint32_t height
         ) = 0;
 
         /**
@@ -172,11 +188,15 @@ namespace CinematicFX {
          * @param input Input GPU texture
          * @param output Output GPU texture
          * @param params Chromatic aberration parameters
+         * @param width Frame width
+         * @param height Frame height
          */
         virtual void ExecuteChromaticAberration(
             GPUTexture input,
             GPUTexture output,
-            const ChromaticAberrationParameters& params
+            const ChromaticAberrationParameters& params,
+            uint32_t width,
+            uint32_t height
         ) = 0;
 
         /**

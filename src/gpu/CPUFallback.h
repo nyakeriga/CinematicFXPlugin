@@ -37,32 +37,42 @@ namespace CinematicFX {
         void ExecuteBloom(
             GPUTexture input_texture,
             GPUTexture output_texture,
-            const BloomParameters& params
+            const BloomParameters& params,
+            uint32_t width,
+            uint32_t height
         ) override;
 
         void ExecuteGlow(
             GPUTexture input_texture,
             GPUTexture output_texture,
-            const GlowParameters& params
+            const GlowParameters& params,
+            uint32_t width,
+            uint32_t height
         ) override;
 
         void ExecuteHalation(
             GPUTexture input_texture,
             GPUTexture output_texture,
-            const HalationParameters& params
+            const HalationParameters& params,
+            uint32_t width,
+            uint32_t height
         ) override;
 
         void ExecuteGrain(
             GPUTexture input_texture,
             GPUTexture output_texture,
             const GrainParameters& params,
-            uint32_t frame_number
+            uint32_t frame_number,
+            uint32_t width,
+            uint32_t height
         ) override;
 
         void ExecuteChromaticAberration(
             GPUTexture input_texture,
             GPUTexture output_texture,
-            const ChromaticAberrationParameters& params
+            const ChromaticAberrationParameters& params,
+            uint32_t width,
+            uint32_t height
         ) override;
 
         void Synchronize() override { /* No-op for CPU */ }

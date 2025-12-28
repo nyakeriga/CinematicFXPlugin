@@ -16,6 +16,8 @@ RenderPipeline::RenderPipeline(GPUContext* gpu_context)
     , quality_preset_(QualityPreset::STANDARD)
     , profiling_enabled_(false)
     , last_frame_time_ms_(0.0f)
+    , width_(0)
+    , height_(0)
     , temp_texture_1_(nullptr)
     , temp_texture_2_(nullptr)
 {
@@ -57,6 +59,10 @@ bool RenderPipeline::RenderFrame(
         Logger::Error("RenderPipeline: Input/output dimension mismatch");
         return false;
     }
+
+    // Update current frame dimensions
+    width_ = input.width;
+    height_ = input.height;
     
     PerformanceTimer frame_timer;
     if (profiling_enabled_) {
@@ -170,7 +176,7 @@ bool RenderPipeline::RenderFrame(
             }
         } else {
             // No grain - copy current to output
-            backend->ExecuteGrain(current_texture, output_texture, GrainParameters(), frame_number);
+            backend->ExecuteGrain(current_texture, output_texture, GrainParameters(), frame_number, width_, height_);
         }
         
     } catch (const std::exception& e) {
@@ -254,7 +260,7 @@ void RenderPipeline::ApplyBloomPass(
     GPUTexture output,
     const BloomParameters& params
 ) {
-    gpu_context_->GetBackend()->ExecuteBloom(input, output, params);
+    gpu_context_->GetBackend()->ExecuteBloom(input, output, params, width_, height_);
 }
 
 void RenderPipeline::ApplyGlowPass(
@@ -262,7 +268,7 @@ void RenderPipeline::ApplyGlowPass(
     GPUTexture output,
     const GlowParameters& params
 ) {
-    gpu_context_->GetBackend()->ExecuteGlow(input, output, params);
+    gpu_context_->GetBackend()->ExecuteGlow(input, output, params, width_, height_);
 }
 
 void RenderPipeline::ApplyHalationPass(
@@ -270,7 +276,7 @@ void RenderPipeline::ApplyHalationPass(
     GPUTexture output,
     const HalationParameters& params
 ) {
-    gpu_context_->GetBackend()->ExecuteHalation(input, output, params);
+    gpu_context_->GetBackend()->ExecuteHalation(input, output, params, width_, height_);
 }
 
 void RenderPipeline::ApplyChromaticAberrationPass(
@@ -278,7 +284,7 @@ void RenderPipeline::ApplyChromaticAberrationPass(
     GPUTexture output,
     const ChromaticAberrationParameters& params
 ) {
-    gpu_context_->GetBackend()->ExecuteChromaticAberration(input, output, params);
+    gpu_context_->GetBackend()->ExecuteChromaticAberration(input, output, params, width_, height_);
 }
 
 void RenderPipeline::ApplyGrainPass(
@@ -287,7 +293,7 @@ void RenderPipeline::ApplyGrainPass(
     const GrainParameters& params,
     uint32_t frame_number
 ) {
-    gpu_context_->GetBackend()->ExecuteGrain(input, output, params, frame_number);
+    gpu_context_->GetBackend()->ExecuteGrain(input, output, params, frame_number, width_, height_);
 }
 
 } // namespace CinematicFX

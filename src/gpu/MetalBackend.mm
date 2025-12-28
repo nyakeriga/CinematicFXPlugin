@@ -275,7 +275,7 @@ bool MetalBackend::DownloadTexture(GPUTexture texture, FrameBuffer& buffer) {
     return true;
 }
 
-void MetalBackend::ExecuteBloom(GPUTexture input, GPUTexture output, const BloomParameters& params) {
+void MetalBackend::ExecuteBloom(GPUTexture input, GPUTexture output, const BloomParameters& params, uint32_t width, uint32_t height) {
     PerformanceTimer timer;
     timer.Start();
     
@@ -287,12 +287,12 @@ void MetalBackend::ExecuteBloom(GPUTexture input, GPUTexture output, const Bloom
         return;
     }
     
-    Logger::Debug("MetalBackend: Executing bloom effect (%dx%d)", inputTex->width, inputTex->height);
+    Logger::Debug("MetalBackend: Executing bloom effect (%dx%d)", width, height);
     
     // Create temporary textures for multi-pass bloom
-    GPUTexture tempExtract = AllocateTexture(inputTex->width, inputTex->height, true);
-    GPUTexture tempBlurH = AllocateTexture(inputTex->width, inputTex->height, true);
-    GPUTexture tempBlurV = AllocateTexture(inputTex->width, inputTex->height, true);
+    GPUTexture tempExtract = AllocateTexture(width, height, true);
+    GPUTexture tempBlurH = AllocateTexture(width, height, true);
+    GPUTexture tempBlurV = AllocateTexture(width, height, true);
     
     if (!tempExtract || !tempBlurH || !tempBlurV) {
         Logger::Error("MetalBackend: Failed to allocate temporary textures for bloom");
@@ -331,8 +331,8 @@ void MetalBackend::ExecuteBloom(GPUTexture input, GPUTexture output, const Bloom
         extractTex->texture,
         &bloomParams,
         sizeof(bloomParams),
-        inputTex->width,
-        inputTex->height
+        width,
+        height
     );
     
     // Pass 2: Horizontal blur
@@ -348,8 +348,8 @@ void MetalBackend::ExecuteBloom(GPUTexture input, GPUTexture output, const Bloom
         blurHTex->texture,
         &blurParams,
         sizeof(blurParams),
-        inputTex->width,
-        inputTex->height
+        width,
+        height
     );
     
     // Pass 3: Vertical blur
@@ -359,8 +359,8 @@ void MetalBackend::ExecuteBloom(GPUTexture input, GPUTexture output, const Bloom
         blurVTex->texture,
         &blurParams,
         sizeof(blurParams),
-        inputTex->width,
-        inputTex->height
+        width,
+        height
     );
     
     // Pass 4: Blend with original
@@ -371,8 +371,8 @@ void MetalBackend::ExecuteBloom(GPUTexture input, GPUTexture output, const Bloom
         outputTex->texture,
         &bloomParams,
         sizeof(bloomParams),
-        inputTex->width,
-        inputTex->height
+        width,
+        height
     );
     
     // Cleanup temporary textures
@@ -385,7 +385,7 @@ void MetalBackend::ExecuteBloom(GPUTexture input, GPUTexture output, const Bloom
     Logger::Debug("MetalBackend: Bloom effect completed in %.2f ms", timer.GetElapsedMs());
 }
 
-void MetalBackend::ExecuteGlow(GPUTexture input, GPUTexture output, const GlowParameters& params) {
+void MetalBackend::ExecuteGlow(GPUTexture input, GPUTexture output, const GlowParameters& params, uint32_t width, uint32_t height) {
     PerformanceTimer timer;
     timer.Start();
     
@@ -397,12 +397,12 @@ void MetalBackend::ExecuteGlow(GPUTexture input, GPUTexture output, const GlowPa
         return;
     }
     
-    Logger::Debug("MetalBackend: Executing glow effect (%dx%d)", inputTex->width, inputTex->height);
+    Logger::Debug("MetalBackend: Executing glow effect (%dx%d)", width, height);
     
     // Create temporary textures for multi-pass glow
-    GPUTexture tempExtract = AllocateTexture(inputTex->width, inputTex->height, true);
-    GPUTexture tempBlurH = AllocateTexture(inputTex->width, inputTex->height, true);
-    GPUTexture tempBlurV = AllocateTexture(inputTex->width, inputTex->height, true);
+    GPUTexture tempExtract = AllocateTexture(width, height, true);
+    GPUTexture tempBlurH = AllocateTexture(width, height, true);
+    GPUTexture tempBlurV = AllocateTexture(width, height, true);
     
     if (!tempExtract || !tempBlurH || !tempBlurV) {
         Logger::Error("MetalBackend: Failed to allocate temporary textures for glow");
@@ -445,8 +445,8 @@ void MetalBackend::ExecuteGlow(GPUTexture input, GPUTexture output, const GlowPa
         extractTex->texture,
         &glowParams,
         sizeof(glowParams),
-        inputTex->width,
-        inputTex->height
+        width,
+        height
     );
     
     // Pass 2: Horizontal blur with anisotropic radius
@@ -481,8 +481,8 @@ void MetalBackend::ExecuteGlow(GPUTexture input, GPUTexture output, const GlowPa
         blurHTex->texture,
         &glowBlurParams,
         sizeof(glowBlurParams),
-        inputTex->width,
-        inputTex->height
+        width,
+        height
     );
     
     // Pass 3: Vertical blur
@@ -492,8 +492,8 @@ void MetalBackend::ExecuteGlow(GPUTexture input, GPUTexture output, const GlowPa
         blurVTex->texture,
         &glowBlurParams,
         sizeof(glowBlurParams),
-        inputTex->width,
-        inputTex->height
+        width,
+        height
     );
     
     // Pass 4: Advanced blend modes
@@ -504,8 +504,8 @@ void MetalBackend::ExecuteGlow(GPUTexture input, GPUTexture output, const GlowPa
         outputTex->texture,
         &glowParams,
         sizeof(glowParams),
-        inputTex->width,
-        inputTex->height
+        width,
+        height
     );
     
     // Cleanup temporary textures
@@ -518,7 +518,7 @@ void MetalBackend::ExecuteGlow(GPUTexture input, GPUTexture output, const GlowPa
     Logger::Debug("MetalBackend: Glow effect completed in %.2f ms", timer.GetElapsedMs());
 }
 
-void MetalBackend::ExecuteHalation(GPUTexture input, GPUTexture output, const HalationParameters& params) {
+void MetalBackend::ExecuteHalation(GPUTexture input, GPUTexture output, const HalationParameters& params, uint32_t width, uint32_t height) {
     PerformanceTimer timer;
     timer.Start();
     
@@ -530,10 +530,10 @@ void MetalBackend::ExecuteHalation(GPUTexture input, GPUTexture output, const Ha
         return;
     }
     
-    Logger::Debug("MetalBackend: Executing halation effect (%dx%d)", inputTex->width, inputTex->height);
+    Logger::Debug("MetalBackend: Executing halation effect (%dx%d)", width, height);
     
     // Create temporary texture for blurred halation
-    GPUTexture tempBlur = AllocateTexture(inputTex->width, inputTex->height, true);
+    GPUTexture tempBlur = AllocateTexture(width, height, true);
     
     if (!tempBlur) {
         Logger::Error("MetalBackend: Failed to allocate temporary texture for halation");
@@ -563,8 +563,8 @@ void MetalBackend::ExecuteHalation(GPUTexture input, GPUTexture output, const Ha
         blurTex->texture,
         &halationParams,
         sizeof(halationParams),
-        inputTex->width,
-        inputTex->height
+        width,
+        height
     );
     
     // Pass 2: Apply red fringe to highlights
@@ -575,8 +575,8 @@ void MetalBackend::ExecuteHalation(GPUTexture input, GPUTexture output, const Ha
         outputTex->texture,
         &params,
         sizeof(params),
-        inputTex->width,
-        inputTex->height
+        width,
+        height
     );
     
     // Cleanup temporary texture
@@ -587,7 +587,7 @@ void MetalBackend::ExecuteHalation(GPUTexture input, GPUTexture output, const Ha
     Logger::Debug("MetalBackend: Halation effect completed in %.2f ms", timer.GetElapsedMs());
 }
 
-void MetalBackend::ExecuteGrain(GPUTexture input, GPUTexture output, const GrainParameters& params, uint32_t frame) {
+void MetalBackend::ExecuteGrain(GPUTexture input, GPUTexture output, const GrainParameters& params, uint32_t frame_number, uint32_t width, uint32_t height) {
     PerformanceTimer timer;
     timer.Start();
     
@@ -600,7 +600,7 @@ void MetalBackend::ExecuteGrain(GPUTexture input, GPUTexture output, const Grain
     }
     
     Logger::Debug("MetalBackend: Executing grain effect (%dx%d, frame %d)", 
-                 inputTex->width, inputTex->height, frame);
+                 width, height, frame_number);
     
     // Apply luminosity-based grain with temporal stability
     struct {
@@ -629,8 +629,8 @@ void MetalBackend::ExecuteGrain(GPUTexture input, GPUTexture output, const Grain
         outputTex->texture,
         paramData.bytes,
         paramData.length,
-        inputTex->width,
-        inputTex->height
+        width,
+        height
     );
     
     timer.Stop();
@@ -638,7 +638,7 @@ void MetalBackend::ExecuteGrain(GPUTexture input, GPUTexture output, const Grain
     Logger::Debug("MetalBackend: Grain effect completed in %.2f ms", timer.GetElapsedMs());
 }
 
-void MetalBackend::ExecuteChromaticAberration(GPUTexture input, GPUTexture output, const ChromaticAberrationParameters& params) {
+void MetalBackend::ExecuteChromaticAberration(GPUTexture input, GPUTexture output, const ChromaticAberrationParameters& params, uint32_t width, uint32_t height) {
     PerformanceTimer timer;
     timer.Start();
     
@@ -651,7 +651,7 @@ void MetalBackend::ExecuteChromaticAberration(GPUTexture input, GPUTexture outpu
     }
     
     Logger::Debug("MetalBackend: Executing chromatic aberration effect (%dx%d)", 
-                 inputTex->width, inputTex->height);
+                 width, height);
     
     // Apply RGB channel offsets with distance-based scaling
     EncodeComputeCommand(
@@ -660,8 +660,8 @@ void MetalBackend::ExecuteChromaticAberration(GPUTexture input, GPUTexture outpu
         outputTex->texture,
         &params,
         sizeof(params),
-        inputTex->width,
-        inputTex->height
+        width,
+        height
     );
     
     timer.Stop();

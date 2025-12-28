@@ -18,6 +18,8 @@
 #include "../../include/GPUInterface.h"
 #include "RenderPipeline.h"
 #include "../utils/Logger.h"
+#include "../utils/ColorConversion.h"
+#include <memory>
 
 #include <cstring>
 #include <stdio.h>
@@ -78,13 +80,56 @@ enum {
 };
 
 // Global plugin instance data
-typedef struct {
-    CinematicFX::RenderPipeline* render_pipeline;
-    CinematicFX::GPUContext* gpu_context;
-    bool initialized;
-} GlobalData;
+struct GlobalData {
+    std::unique_ptr<CinematicFX::RenderPipeline> render_pipeline;
+    std::unique_ptr<CinematicFX::GPUContext> gpu_context;
+    bool initialized = false;
+};
 
-static GlobalData g_global_data = {nullptr, nullptr, false};
+static GlobalData g_global_data;
+
+/*******************************************************************************
+ * Parameter Extraction Helper
+ *******************************************************************************/
+static CinematicFX::EffectParameters ExtractParameters(PF_ParamDef** params) {
+    CinematicFX::EffectParameters p;
+
+    // Master enable
+    p.output_enabled = params[CINEMATICFX_OUTPUT_ENABLED]->u.bd.value;
+
+    // Glow parameters (merged bloom+glow)
+    p.glow.intensity = params[CINEMATICFX_GLOW_INTENSITY]->u.fs_d.value / 100.0f;
+    p.glow.threshold = params[CINEMATICFX_GLOW_THRESHOLD]->u.fs_d.value / 100.0f;
+    p.glow.diffusion_radius = params[CINEMATICFX_GLOW_RADIUS_X]->u.fs_d.value; // Using X radius
+    p.glow.desaturation = params[CINEMATICFX_GLOW_DESATURATION]->u.fs_d.value / 100.0f;
+    PF_Pixel* tint_pixel = &params[CINEMATICFX_GLOW_TINT]->u.cd.value;
+    p.glow.tint_r = static_cast<float>(tint_pixel->red) / 255.0f;
+    p.glow.tint_g = static_cast<float>(tint_pixel->green) / 255.0f;
+    p.glow.tint_b = static_cast<float>(tint_pixel->blue) / 255.0f;
+
+    // Halation parameters
+    p.halation.intensity = params[CINEMATICFX_HALATION_INTENSITY]->u.fs_d.value / 100.0f;
+    p.halation.spread = params[CINEMATICFX_HALATION_RADIUS]->u.fs_d.value;
+
+    // Grain parameters
+    p.grain.shadows_amount = params[CINEMATICFX_GRAIN_SHADOWS]->u.fs_d.value / 100.0f;
+    p.grain.mids_amount = params[CINEMATICFX_GRAIN_MIDS]->u.fs_d.value / 100.0f;
+    p.grain.highlights_amount = params[CINEMATICFX_GRAIN_HIGHLIGHTS]->u.fs_d.value / 100.0f;
+    p.grain.size = params[CINEMATICFX_GRAIN_SIZE]->u.fs_d.value;
+    p.grain.roughness = params[CINEMATICFX_GRAIN_SOFTNESS]->u.fs_d.value / 100.0f;
+    p.grain.saturation = params[CINEMATICFX_GRAIN_SATURATION]->u.fs_d.value / 100.0f;
+    p.grain.amount = (p.grain.shadows_amount + p.grain.mids_amount + p.grain.highlights_amount) / 3.0f;
+
+    // Chromatic Aberration parameters
+    p.chromatic_aberration.red_scale = params[CINEMATICFX_CHROMA_RED_SCALE]->u.fs_d.value;
+    p.chromatic_aberration.green_scale = params[CINEMATICFX_CHROMA_GREEN_SCALE]->u.fs_d.value;
+    p.chromatic_aberration.blue_scale = params[CINEMATICFX_CHROMA_BLUE_SCALE]->u.fs_d.value;
+    p.chromatic_aberration.blurriness = params[CINEMATICFX_CHROMA_BLURRINESS]->u.fs_d.value;
+    p.chromatic_aberration.angle = params[CINEMATICFX_CHROMA_ANGLE]->u.ad.value; // angle in degrees
+    p.chromatic_aberration.amount = 0.1f; // Fixed small amount for now
+
+    return p;
+}
 
 /*******************************************************************************
  * Global Setup - Initialize plugin
@@ -114,7 +159,7 @@ static PF_Err GlobalSetup(
 
     out_data->out_flags2 = 0;
 
-    // TEMPORARY: Disable all GPU context init for maximum safety
+
     g_global_data.gpu_context = nullptr;
     g_global_data.initialized = true;
 
@@ -131,16 +176,8 @@ static PF_Err GlobalSetdown(
     PF_LayerDef* output
 ) {
     if (g_global_data.initialized) {
-        if (g_global_data.render_pipeline) {
-            delete g_global_data.render_pipeline;
-            g_global_data.render_pipeline = nullptr;
-        }
-        
-        if (g_global_data.gpu_context) {
-            delete g_global_data.gpu_context;
-            g_global_data.gpu_context = nullptr;
-        }
-        
+        g_global_data.render_pipeline.reset();
+        g_global_data.gpu_context.reset();
         CinematicFX::Logger::Shutdown();
         g_global_data.initialized = false;
     }
@@ -291,33 +328,79 @@ static PF_Err Render(
     PF_ParamDef** params,
     PF_LayerDef* output
 ) {
-    // CRITICAL FIX: Handle all output pixels, not just overlapping region
     if (!in_data || !out_data || !params || !output) {
         return PF_Err_BAD_CALLBACK_PARAM;
     }
 
     PF_LayerDef* input = &params[CINEMATICFX_INPUT]->u.ld;
-
     if (!input->data || !output->data) {
         return PF_Err_NONE;
     }
 
-    // Always clear the entire output buffer to black (RGBA=0)
-    for (int y = 0; y < output->height; ++y) {
-        PF_Pixel8* dst = (PF_Pixel8*)((char*)output->data + y * output->rowbytes);
-        std::memset(dst, 0, output->width * sizeof(PF_Pixel8));
+    int width = std::min(input->width, output->width);
+    int height = std::min(input->height, output->height);
+
+    // Extract effect parameters
+    CinematicFX::EffectParameters effect_params = ExtractParameters(params);
+
+    // Convert Adobe PF_Pixel8 → Engine Float Buffer
+    auto input_float = CinematicFX::ColorConversion::AdobeToEngine(
+        (CinematicFX::PF_Pixel8*)input->data,
+        width,
+        height,
+        input->rowbytes
+    );
+
+    // Create FrameBuffer for RenderPipeline
+    CinematicFX::FrameBuffer input_frame;
+    input_frame.data = input_float.get();
+    input_frame.width = width;
+    input_frame.height = height;
+    input_frame.stride = width * 4; // RGBA float
+    input_frame.owns_data = false; // Managed by unique_ptr
+
+    // Allocate output FrameBuffer
+    auto output_float = CinematicFX::ColorConversion::CreateEngineBuffer(width, height);
+    CinematicFX::FrameBuffer output_frame;
+    output_frame.data = output_float.get();
+    output_frame.width = width;
+    output_frame.height = height;
+    output_frame.stride = width * 4;
+    output_frame.owns_data = false;
+
+    // Initialize RenderPipeline if needed
+    if (!g_global_data.render_pipeline && g_global_data.gpu_context) {
+        g_global_data.render_pipeline = std::make_unique<CinematicFX::RenderPipeline>(g_global_data.gpu_context.get());
     }
 
-    // Copy only the overlapping region from input to output
-    const int copy_width = std::min(input->width, output->width);
-    const int copy_height = std::min(input->height, output->height);
-    for (int y = 0; y < copy_height; ++y) {
-        PF_Pixel8* src = (PF_Pixel8*)((char*)input->data + y * input->rowbytes);
-        PF_Pixel8* dst = (PF_Pixel8*)((char*)output->data + y * output->rowbytes);
-        for (int x = 0; x < copy_width; ++x) {
-            dst[x] = src[x];
-        }
+    // Process through RenderPipeline (Float Engine)
+    uint32_t frame_number = 0; // TODO: Get actual frame number from AE
+    bool success = false;
+
+    if (g_global_data.render_pipeline) {
+        success = g_global_data.render_pipeline->RenderFrame(
+            input_frame,
+            output_frame,
+            effect_params,
+            frame_number
+        );
     }
+
+    if (!success) {
+        // Fallback: just copy input to output
+        memcpy(output->data, input->data,
+               std::min(input->rowbytes * height, output->rowbytes * height));
+        return PF_Err_NONE;
+    }
+
+    // Convert Engine Float Buffer → Adobe PF_Pixel8
+    CinematicFX::ColorConversion::EngineToAdobe(
+        output_float.get(),
+        (CinematicFX::PF_Pixel8*)output->data,
+        width,
+        height,
+        output->rowbytes
+    );
 
     return PF_Err_NONE;
 }
