@@ -24,67 +24,67 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
     0x00, 0x00, 0x00, 0x0C,  // 12 properties
     
     // Property 1: Kind = 'AEft' (After Effects Plugin)
-    'k', 'i', 'n', 'd',      // Property type
+    0x6B, 0x69, 0x6E, 0x64,  // Property type
     0x00, 0x00, 0x00, 0x04,  // Property size (4 bytes)
-    'A', 'E', 'f', 't',      // After Effects plugin type
+    0x41, 0x45, 0x66, 0x74,  // After Effects plugin type
     
     // Property 2: Name = "CinematicFX"
-    'n', 'a', 'm', 'e',      // Property type
+    0x6E, 0x61, 0x6D, 0x65,  // Property type
     0x00, 0x00, 0x00, 0x0D,  // Property size (13 bytes)
     0x0B,                     // String length (11)
-    'C', 'i', 'n', 'e', 'm', 'a', 't', 'i', 'c', 'F', 'X',  // Name
+    0x43, 0x69, 0x6E, 0x65, 0x6D, 0x61, 0x74, 0x69, 0x63, 0x46, 0x58,  // Name
     0x00,                     // Padding
     
     // Property 3: Category = "CinematicFX"
-    'c', 'a', 't', 'e',      // Property type
+    0x63, 0x61, 0x74, 0x65,  // Property type
     0x00, 0x00, 0x00, 0x0D,  // Property size
     0x0B,                     // String length
-    'C', 'i', 'n', 'e', 'm', 'a', 't', 'i', 'c', 'F', 'X',
+    0x43, 0x69, 0x6E, 0x65, 0x6D, 0x61, 0x74, 0x69, 0x63, 0x46, 0x58,
     0x00,                     // Padding
     
     // Property 4: Match Name = "POL_CinematicFX"
-    'm', 'a', 't', 'n',      // Property type
+    0x6D, 0x61, 0x74, 0x6E,  // Property type
     0x00, 0x00, 0x00, 0x11,  // Property size (17 bytes)
     0x0F,                     // String length (15)
-    'P', 'O', 'L', '_', 'C', 'i', 'n', 'e', 'm', 'a', 't', 'i', 'c', 'F', 'X',
+    0x50, 0x4F, 0x4C, 0x5F, 0x43, 0x69, 0x6E, 0x65, 0x6D, 0x61, 0x74, 0x69, 0x63, 0x46, 0x58,
     
     // Property 5: Version
-    'v', 'e', 'r', 's',      // Property type
+    0x76, 0x65, 0x72, 0x73,  // Property type
     0x00, 0x00, 0x00, 0x04,  // Property size
     0x00, 0x01, 0x00, 0x00,  // Version 1.0
-    
+
     // Property 6: AE_PiPL_Version
-    'A', 'E', '0', '1',      // Property type
+    0x41, 0x45, 0x30, 0x31,  // Property type
     0x00, 0x00, 0x00, 0x04,  // Property size
     0x00, 0x02, 0x00, 0x00,  // Version 2.0
-    
+
     // Property 7: AE_Effect_Spec_Version
-    'A', 'E', '0', '2',      // Property type
+    0x41, 0x45, 0x30, 0x32,  // Property type
     0x00, 0x00, 0x00, 0x04,  // Property size
     0x00, 0x0D, 0x00, 0x00,  // Spec version
-    
+
     // Property 8: AE_Effect_Version
-    'A', 'E', '0', '3',      // Property type
+    0x41, 0x45, 0x30, 0x33,  // Property type
     0x00, 0x00, 0x00, 0x04,  // Property size
     0x00, 0x08, 0x00, 0x00,  // Effect version
-    
+
     // Property 9: AE_Effect_Info_Flags
-    'A', 'E', '0', '4',      // Property type
+    0x41, 0x45, 0x30, 0x34,  // Property type
     0x00, 0x00, 0x00, 0x04,  // Property size
     0x00, 0x00, 0x00, 0x00,  // No special flags
-    
+
     // Property 10: AE_Effect_Global_OutFlags
-    'A', 'E', '0', '5',      // Property type
+    0x41, 0x45, 0x30, 0x35,  // Property type
     0x00, 0x00, 0x00, 0x04,  // Property size
     0x02, 0x00, 0x02, 0x00,  // 32-bit float + GPU support
-    
+
     // Property 11: AE_Effect_Global_OutFlags_2
-    'A', 'E', '0', '6',      // Property type
+    0x41, 0x45, 0x30, 0x36,  // Property type
     0x00, 0x00, 0x00, 0x04,  // Property size
     0x00, 0x02, 0x00, 0x01,  // Float color aware + smart render
-    
+
     // Property 12: AE_Reserved_Info
-    'A', 'E', '0', '7',      // Property type
+    0x41, 0x45, 0x30, 0x37,  // Property type
     0x00, 0x00, 0x00, 0x04,  // Property size
     0x00, 0x00, 0x00, 0x00   // Reserved
 }

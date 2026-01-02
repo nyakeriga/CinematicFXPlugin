@@ -85,22 +85,17 @@ bool MetalBackend::Initialize() {
         return false;
     }
     
-    // Load shader library from bloom_shader.metal
+    // Load shader library from compiled metallib
     NSError* error = nil;
-    NSString* shaderPath = [[NSBundle mainBundle] pathForResource:@"bloom_shader" ofType:@"metal"];
-    
-    if (!shaderPath) {
-        // Try alternative path
-        shaderPath = [[NSBundle bundleForClass:[self class]] pathForResource:@"bloom_shader" ofType:@"metal"];
-    }
-    
-    if (!shaderPath) {
-        Logger::Warning("MetalBackend: bloom_shader.metal not found, using built-in shaders");
+    NSString* libraryPath = [[NSBundle mainBundle] pathForResource:@"CinematicFX" ofType:@"metallib"];
+
+    if (!libraryPath) {
+        Logger::Warning("MetalBackend: CinematicFX.metallib not found, using default library");
         impl_->library = [impl_->device newDefaultLibrary];
     } else {
-        Logger::Info("MetalBackend: Loading shader library from: %s", [shaderPath UTF8String]);
-        NSURL* shaderURL = [NSURL fileURLWithPath:shaderPath];
-        impl_->library = [impl_->device newLibraryWithURL:shaderURL error:&error];
+        Logger::Info("MetalBackend: Loading shader library from: %s", [libraryPath UTF8String]);
+        NSURL* libraryURL = [NSURL fileURLWithPath:libraryPath];
+        impl_->library = [impl_->device newLibraryWithURL:libraryURL error:&error];
     }
     
     if (!impl_->library || error) {

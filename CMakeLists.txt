@@ -116,10 +116,6 @@ if(CINEMATICFX_BUILD_METAL AND APPLE)
         
         set(METAL_SHADER_SOURCES
             src/kernels/metal/bloom_shader.metal
-            src/kernels/metal/glow_shader.metal
-            src/kernels/metal/halation_shader.metal
-            src/kernels/metal/grain_shader.metal
-            src/kernels/metal/chromatic_aberration_shader.metal
         )
         
         # Custom command to compile Metal shaders
@@ -171,13 +167,14 @@ set(UTIL_SOURCES
 ################################################################################
 
 if(WIN32)
-    # Windows: .prm plugin (without PiPL resource for now)
+    # Windows: .prm plugin with PiPL resource
     add_library(CinematicFX MODULE
         ${CORE_SOURCES}
         ${UTIL_SOURCES}
         ${CUDA_KERNEL_SOURCES}
+        resources/CinematicFX.rc
     )
-    
+
     # Add GPU sources
     target_sources(CinematicFX PRIVATE ${GPU_SOURCES})
     
