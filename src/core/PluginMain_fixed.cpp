@@ -34,10 +34,7 @@ enum {
     // Master controls
     CINEMATICFX_OUTPUT_ENABLED,
     
-    // Bloom parameters removed (merged into Glow)
-    
-    // Glow (merged with Bloom)
-    CINEMATICFX_GLOW_GROUP_START,
+    // Glow parameters
     CINEMATICFX_GLOW_ENABLED,
     CINEMATICFX_GLOW_THRESHOLD,
     CINEMATICFX_GLOW_INTENSITY,
@@ -46,35 +43,32 @@ enum {
     CINEMATICFX_GLOW_DESATURATION,
     CINEMATICFX_GLOW_BLEND_MODE,
     CINEMATICFX_GLOW_TINT,
-    CINEMATICFX_GLOW_GROUP_END,
-    
+
     // Halation parameters
-    CINEMATICFX_HALATION_GROUP_START,
+    CINEMATICFX_HALATION_ENABLED,
     CINEMATICFX_HALATION_INTENSITY,
     CINEMATICFX_HALATION_RADIUS,
     CINEMATICFX_HALATION_HUE,
     CINEMATICFX_HALATION_SATURATION,
     CINEMATICFX_HALATION_THRESHOLD,
-    CINEMATICFX_HALATION_GROUP_END,
-    
+
     // Grain parameters
-    CINEMATICFX_GRAIN_GROUP_START,
+    CINEMATICFX_GRAIN_ENABLED,
     CINEMATICFX_GRAIN_SHADOWS,
     CINEMATICFX_GRAIN_MIDS,
     CINEMATICFX_GRAIN_HIGHLIGHTS,
     CINEMATICFX_GRAIN_SIZE,
     CINEMATICFX_GRAIN_SOFTNESS,
     CINEMATICFX_GRAIN_SATURATION,
-    CINEMATICFX_GRAIN_GROUP_END,
-    
+
     // Chromatic Aberration parameters
-    CINEMATICFX_CHROMA_GROUP_START,
+    CINEMATICFX_CHROMA_ENABLED,
+    CINEMATICFX_CHROMA_AMOUNT,
     CINEMATICFX_CHROMA_RED_SCALE,
     CINEMATICFX_CHROMA_GREEN_SCALE,
     CINEMATICFX_CHROMA_BLUE_SCALE,
     CINEMATICFX_CHROMA_BLURRINESS,
     CINEMATICFX_CHROMA_ANGLE,
-    CINEMATICFX_CHROMA_GROUP_END,
     
     CINEMATICFX_NUM_PARAMS
 };
@@ -95,38 +89,53 @@ static CinematicFX::EffectParameters ExtractParameters(PF_ParamDef** params) {
     CinematicFX::EffectParameters p;
 
     // Master enable
-    p.output_enabled = params[CINEMATICFX_OUTPUT_ENABLED]->u.bd.value;
+    p.output_enabled = params[CINEMATICFX_OUTPUT_ENABLED] ? params[CINEMATICFX_OUTPUT_ENABLED]->u.bd.value : true;
 
-    // Glow parameters (merged bloom+glow)
-    p.glow.intensity = params[CINEMATICFX_GLOW_INTENSITY]->u.fs_d.value / 100.0f;
-    p.glow.threshold = params[CINEMATICFX_GLOW_THRESHOLD]->u.fs_d.value / 100.0f;
-    p.glow.diffusion_radius = params[CINEMATICFX_GLOW_RADIUS_X]->u.fs_d.value; // Using X radius
-    p.glow.desaturation = params[CINEMATICFX_GLOW_DESATURATION]->u.fs_d.value / 100.0f;
-    PF_Pixel* tint_pixel = &params[CINEMATICFX_GLOW_TINT]->u.cd.value;
-    p.glow.tint_r = static_cast<float>(tint_pixel->red) / 255.0f;
-    p.glow.tint_g = static_cast<float>(tint_pixel->green) / 255.0f;
-    p.glow.tint_b = static_cast<float>(tint_pixel->blue) / 255.0f;
+    // Glow enable and parameters (merged bloom+glow)
+    bool glow_enabled = params[CINEMATICFX_GLOW_ENABLED] ? params[CINEMATICFX_GLOW_ENABLED]->u.bd.value : true;
+    p.glow.intensity = params[CINEMATICFX_GLOW_INTENSITY] ? params[CINEMATICFX_GLOW_INTENSITY]->u.fs_d.value / 100.0f : 0.0f;
+    p.glow.threshold = params[CINEMATICFX_GLOW_THRESHOLD] ? params[CINEMATICFX_GLOW_THRESHOLD]->u.fs_d.value / 100.0f : 0.0f;
+    p.glow.diffusion_radius = params[CINEMATICFX_GLOW_RADIUS_X] ? params[CINEMATICFX_GLOW_RADIUS_X]->u.fs_d.value : 0.0f;
+    p.glow.desaturation = params[CINEMATICFX_GLOW_DESATURATION] ? params[CINEMATICFX_GLOW_DESATURATION]->u.fs_d.value / 100.0f : 0.0f;
+    p.glow.blend_mode = params[CINEMATICFX_GLOW_BLEND_MODE] ? params[CINEMATICFX_GLOW_BLEND_MODE]->u.pd.value : 0;
+    PF_Pixel* tint_pixel = params[CINEMATICFX_GLOW_TINT] ? &params[CINEMATICFX_GLOW_TINT]->u.cd.value : nullptr;
+    if (tint_pixel) {
+        p.glow.tint_r = static_cast<float>(tint_pixel->red) / 255.0f;
+        p.glow.tint_g = static_cast<float>(tint_pixel->green) / 255.0f;
+        p.glow.tint_b = static_cast<float>(tint_pixel->blue) / 255.0f;
+    } else {
+        p.glow.tint_r = 1.0f;
+        p.glow.tint_g = 1.0f;
+        p.glow.tint_b = 1.0f;
+    }
+    if (!glow_enabled) p.glow.intensity = 0.0f;
 
     // Halation parameters
-    p.halation.intensity = params[CINEMATICFX_HALATION_INTENSITY]->u.fs_d.value / 100.0f;
-    p.halation.spread = params[CINEMATICFX_HALATION_RADIUS]->u.fs_d.value;
+    p.halation.enabled = params[CINEMATICFX_HALATION_ENABLED] ? params[CINEMATICFX_HALATION_ENABLED]->u.bd.value : true;
+    p.halation.intensity = params[CINEMATICFX_HALATION_INTENSITY] ? params[CINEMATICFX_HALATION_INTENSITY]->u.fs_d.value / 100.0f : 0.0f;
+    p.halation.spread = params[CINEMATICFX_HALATION_RADIUS] ? params[CINEMATICFX_HALATION_RADIUS]->u.fs_d.value : 0.0f;
+    p.halation.hue = params[CINEMATICFX_HALATION_HUE] ? params[CINEMATICFX_HALATION_HUE]->u.fs_d.value : 0.0f;
+    p.halation.saturation = params[CINEMATICFX_HALATION_SATURATION] ? params[CINEMATICFX_HALATION_SATURATION]->u.fs_d.value / 100.0f : 1.0f;
+    p.halation.threshold = params[CINEMATICFX_HALATION_THRESHOLD] ? params[CINEMATICFX_HALATION_THRESHOLD]->u.fs_d.value / 100.0f : 0.5f;
 
     // Grain parameters
-    p.grain.shadows_amount = params[CINEMATICFX_GRAIN_SHADOWS]->u.fs_d.value / 100.0f;
-    p.grain.mids_amount = params[CINEMATICFX_GRAIN_MIDS]->u.fs_d.value / 100.0f;
-    p.grain.highlights_amount = params[CINEMATICFX_GRAIN_HIGHLIGHTS]->u.fs_d.value / 100.0f;
-    p.grain.size = params[CINEMATICFX_GRAIN_SIZE]->u.fs_d.value;
-    p.grain.roughness = params[CINEMATICFX_GRAIN_SOFTNESS]->u.fs_d.value / 100.0f;
-    p.grain.saturation = params[CINEMATICFX_GRAIN_SATURATION]->u.fs_d.value / 100.0f;
+    p.grain.enabled = params[CINEMATICFX_GRAIN_ENABLED] ? params[CINEMATICFX_GRAIN_ENABLED]->u.bd.value : true;
+    p.grain.shadows_amount = params[CINEMATICFX_GRAIN_SHADOWS] ? params[CINEMATICFX_GRAIN_SHADOWS]->u.fs_d.value / 100.0f : 0.0f;
+    p.grain.mids_amount = params[CINEMATICFX_GRAIN_MIDS] ? params[CINEMATICFX_GRAIN_MIDS]->u.fs_d.value / 100.0f : 0.0f;
+    p.grain.highlights_amount = params[CINEMATICFX_GRAIN_HIGHLIGHTS] ? params[CINEMATICFX_GRAIN_HIGHLIGHTS]->u.fs_d.value / 100.0f : 0.0f;
+    p.grain.size = params[CINEMATICFX_GRAIN_SIZE] ? params[CINEMATICFX_GRAIN_SIZE]->u.fs_d.value : 1.0f;
+    p.grain.roughness = params[CINEMATICFX_GRAIN_SOFTNESS] ? params[CINEMATICFX_GRAIN_SOFTNESS]->u.fs_d.value / 100.0f : 0.0f;
+    p.grain.saturation = params[CINEMATICFX_GRAIN_SATURATION] ? params[CINEMATICFX_GRAIN_SATURATION]->u.fs_d.value / 100.0f : 1.0f;
     p.grain.amount = (p.grain.shadows_amount + p.grain.mids_amount + p.grain.highlights_amount) / 3.0f;
 
     // Chromatic Aberration parameters
-    p.chromatic_aberration.red_scale = params[CINEMATICFX_CHROMA_RED_SCALE]->u.fs_d.value;
-    p.chromatic_aberration.green_scale = params[CINEMATICFX_CHROMA_GREEN_SCALE]->u.fs_d.value;
-    p.chromatic_aberration.blue_scale = params[CINEMATICFX_CHROMA_BLUE_SCALE]->u.fs_d.value;
-    p.chromatic_aberration.blurriness = params[CINEMATICFX_CHROMA_BLURRINESS]->u.fs_d.value;
-    p.chromatic_aberration.angle = params[CINEMATICFX_CHROMA_ANGLE]->u.ad.value; // angle in degrees
-    p.chromatic_aberration.amount = 0.1f; // Fixed small amount for now
+    p.chromatic_aberration.enabled = params[CINEMATICFX_CHROMA_ENABLED] ? params[CINEMATICFX_CHROMA_ENABLED]->u.bd.value : true;
+    p.chromatic_aberration.amount = params[CINEMATICFX_CHROMA_AMOUNT] ? params[CINEMATICFX_CHROMA_AMOUNT]->u.fs_d.value / 100.0f : 0.1f;
+    p.chromatic_aberration.red_scale = params[CINEMATICFX_CHROMA_RED_SCALE] ? params[CINEMATICFX_CHROMA_RED_SCALE]->u.fs_d.value : 1.0f;
+    p.chromatic_aberration.green_scale = params[CINEMATICFX_CHROMA_GREEN_SCALE] ? params[CINEMATICFX_CHROMA_GREEN_SCALE]->u.fs_d.value : 1.0f;
+    p.chromatic_aberration.blue_scale = params[CINEMATICFX_CHROMA_BLUE_SCALE] ? params[CINEMATICFX_CHROMA_BLUE_SCALE]->u.fs_d.value : 1.0f;
+    p.chromatic_aberration.blurriness = params[CINEMATICFX_CHROMA_BLURRINESS] ? params[CINEMATICFX_CHROMA_BLURRINESS]->u.fs_d.value : 0.0f;
+    p.chromatic_aberration.angle = params[CINEMATICFX_CHROMA_ANGLE] ? params[CINEMATICFX_CHROMA_ANGLE]->u.ad.value : 0.0f;
 
     return p;
 }
@@ -148,19 +157,18 @@ static PF_Err GlobalSetup(
         0,
         0
     );
-    
+
     out_data->name[0] = '\0';
     strncpy(out_data->name, "CinematicFX", sizeof(out_data->name) - 1);
-    
+
     // Only advertise features that are actually implemented (SAFE BASELINE)
     out_data->out_flags =
-        PF_OutFlag_PIX_INDEPENDENT |
-        PF_OutFlag_I_DO_DIALOG;
+        PF_OutFlag_PIX_INDEPENDENT;
 
     out_data->out_flags2 = 0;
 
-
-    g_global_data.gpu_context = nullptr;
+    // Initialize GPU context with automatic backend selection
+    g_global_data.gpu_context = CinematicFX::GPUContext::Create();
     g_global_data.initialized = true;
 
     return PF_Err_NONE;
@@ -201,11 +209,6 @@ static PF_Err ParamsSetup(
         return PF_Err_BAD_CALLBACK_PARAM;
     }
     
-    // Validate version compatibility
-    if (in_data->version.major < 13) {  // Minimum AE/Premiere version
-        return PF_Err_UNRECOGNIZED_PARAM_TYPE;
-    }
-    
     PF_ParamDef def;
     
     // Master Output Enable
@@ -214,105 +217,93 @@ static PF_Err ParamsSetup(
     
     // Bloom group removed (merged into Glow)
     
-    // --- GLOW GROUP (Merged Bloom+Glow) ---
-    AEFX_CLR_STRUCT(def);
-    PF_ADD_TOPIC("Glow (Complete)", CINEMATICFX_GLOW_GROUP_START);
-    
+    // --- GLOW PARAMETERS ---
     AEFX_CLR_STRUCT(def);
     PF_ADD_CHECKBOX("Enable Glow", "", TRUE, 0, CINEMATICFX_GLOW_ENABLED);
-    
+
     AEFX_CLR_STRUCT(def);
-    PF_ADD_FLOAT_SLIDERX("Threshold", 0, 100, 0, 100, 70, PF_Precision_HUNDREDTHS, 0, 0, CINEMATICFX_GLOW_THRESHOLD);
-    
+    PF_ADD_FLOAT_SLIDERX("Glow Threshold", 0, 100, 0, 100, 70, PF_Precision_HUNDREDTHS, 0, 0, CINEMATICFX_GLOW_THRESHOLD);
+
     AEFX_CLR_STRUCT(def);
-    PF_ADD_FLOAT_SLIDERX("Intensity", 0, 200, 0, 200, 80, PF_Precision_HUNDREDTHS, 0, 0, CINEMATICFX_GLOW_INTENSITY);
-    
+    PF_ADD_FLOAT_SLIDERX("Glow Intensity", 0, 200, 0, 200, 100, PF_Precision_HUNDREDTHS, 0, 0, CINEMATICFX_GLOW_INTENSITY);
+
     AEFX_CLR_STRUCT(def);
-    PF_ADD_FLOAT_SLIDERX("Radius X", 1, 100, 1, 100, 40, PF_Precision_TENTHS, 0, 0, CINEMATICFX_GLOW_RADIUS_X);
-    
+    PF_ADD_FLOAT_SLIDERX("Glow Radius X", 1, 100, 1, 100, 20, PF_Precision_TENTHS, 0, 0, CINEMATICFX_GLOW_RADIUS_X);
+
     AEFX_CLR_STRUCT(def);
-    PF_ADD_FLOAT_SLIDERX("Radius Y", 1, 100, 1, 100, 40, PF_Precision_TENTHS, 0, 0, CINEMATICFX_GLOW_RADIUS_Y);
-    
+    PF_ADD_FLOAT_SLIDERX("Glow Radius Y", 1, 100, 1, 100, 20, PF_Precision_TENTHS, 0, 0, CINEMATICFX_GLOW_RADIUS_Y);
+
     AEFX_CLR_STRUCT(def);
-    PF_ADD_FLOAT_SLIDERX("Desaturation", 0, 100, 0, 100, 0, PF_Precision_HUNDREDTHS, 0, 0, CINEMATICFX_GLOW_DESATURATION);
-    
+    PF_ADD_FLOAT_SLIDERX("Glow Desaturation", 0, 100, 0, 100, 30, PF_Precision_HUNDREDTHS, 0, 0, CINEMATICFX_GLOW_DESATURATION);
+
     AEFX_CLR_STRUCT(def);
-    PF_ADD_POPUP("Blend Mode", 3, 1, "Screen|Add|Normal", CINEMATICFX_GLOW_BLEND_MODE);
-    
+    PF_ADD_POPUP("Glow Blend Mode", 3, 1, "Screen|Add|Normal", CINEMATICFX_GLOW_BLEND_MODE);
+
     AEFX_CLR_STRUCT(def);
-    PF_ADD_COLOR("Tint", 255, 255, 255, CINEMATICFX_GLOW_TINT);
+    PF_ADD_COLOR("Glow Tint", 255, 255, 255, CINEMATICFX_GLOW_TINT);
     
+    // --- HALATION PARAMETERS ---
     AEFX_CLR_STRUCT(def);
-    PF_END_TOPIC(CINEMATICFX_GLOW_GROUP_END);
-    
-    // --- HALATION GROUP (Redesigned) ---
+    PF_ADD_CHECKBOX("Enable Halation", "", TRUE, 0, CINEMATICFX_HALATION_ENABLED);
+
     AEFX_CLR_STRUCT(def);
-    PF_ADD_TOPIC("Halation (Film Fringe)", CINEMATICFX_HALATION_GROUP_START);
-    
+    PF_ADD_FLOAT_SLIDERX("Halation Intensity", 0, 100, 0, 100, 60, PF_Precision_HUNDREDTHS, 0, 0, CINEMATICFX_HALATION_INTENSITY);
+
     AEFX_CLR_STRUCT(def);
-    PF_ADD_FLOAT_SLIDERX("Intensity", 0, 100, 0, 100, 60, PF_Precision_HUNDREDTHS, 0, 0, CINEMATICFX_HALATION_INTENSITY);
-    
+    PF_ADD_FLOAT_SLIDERX("Halation Radius", 1, 50, 1, 50, 15, PF_Precision_TENTHS, 0, 0, CINEMATICFX_HALATION_RADIUS);
+
     AEFX_CLR_STRUCT(def);
-    PF_ADD_FLOAT_SLIDERX("Radius", 1, 50, 1, 50, 15, PF_Precision_TENTHS, 0, 0, CINEMATICFX_HALATION_RADIUS);
-    
+    PF_ADD_FLOAT_SLIDERX("Halation Hue", 0, 360, 0, 360, 0, PF_Precision_TENTHS, 0, 0, CINEMATICFX_HALATION_HUE);
+
     AEFX_CLR_STRUCT(def);
-    PF_ADD_FLOAT_SLIDERX("Hue", 0, 360, 0, 360, 0, PF_Precision_TENTHS, 0, 0, CINEMATICFX_HALATION_HUE);
-    
+    PF_ADD_FLOAT_SLIDERX("Halation Saturation", 0, 200, 0, 200, 100, PF_Precision_HUNDREDTHS, 0, 0, CINEMATICFX_HALATION_SATURATION);
+
     AEFX_CLR_STRUCT(def);
-    PF_ADD_FLOAT_SLIDERX("Saturation", 0, 200, 0, 200, 100, PF_Precision_HUNDREDTHS, 0, 0, CINEMATICFX_HALATION_SATURATION);
+    PF_ADD_FLOAT_SLIDERX("Halation Threshold", 0, 100, 0, 100, 30, PF_Precision_HUNDREDTHS, 0, 0, CINEMATICFX_HALATION_THRESHOLD);
     
+    // --- GRAIN PARAMETERS ---
     AEFX_CLR_STRUCT(def);
-    PF_ADD_FLOAT_SLIDERX("Threshold", 0, 100, 0, 100, 50, PF_Precision_HUNDREDTHS, 0, 0, CINEMATICFX_HALATION_THRESHOLD);
-    
-    AEFX_CLR_STRUCT(def);
-    PF_END_TOPIC(CINEMATICFX_HALATION_GROUP_END);
-    
-    // --- GRAIN GROUP (Redesigned) ---
-    AEFX_CLR_STRUCT(def);
-    PF_ADD_TOPIC("Curated Grain", CINEMATICFX_GRAIN_GROUP_START);
-    
+    PF_ADD_CHECKBOX("Enable Grain", "", TRUE, 0, CINEMATICFX_GRAIN_ENABLED);
+
     AEFX_CLR_STRUCT(def);
     PF_ADD_FLOAT_SLIDERX("Shadows Grain", 0, 100, 0, 100, 20, PF_Precision_HUNDREDTHS, 0, 0, CINEMATICFX_GRAIN_SHADOWS);
-    
+
     AEFX_CLR_STRUCT(def);
     PF_ADD_FLOAT_SLIDERX("Midtones Grain", 0, 100, 0, 100, 35, PF_Precision_HUNDREDTHS, 0, 0, CINEMATICFX_GRAIN_MIDS);
-    
+
     AEFX_CLR_STRUCT(def);
     PF_ADD_FLOAT_SLIDERX("Highlights Grain", 0, 100, 0, 100, 15, PF_Precision_HUNDREDTHS, 0, 0, CINEMATICFX_GRAIN_HIGHLIGHTS);
-    
+
     AEFX_CLR_STRUCT(def);
-    PF_ADD_FLOAT_SLIDERX("Size", 0.5, 5.0, 0.5, 5.0, 1.0, PF_Precision_HUNDREDTHS, 0, 0, CINEMATICFX_GRAIN_SIZE);
-    
+    PF_ADD_FLOAT_SLIDERX("Grain Size", 0.5, 5.0, 0.5, 5.0, 1.0, PF_Precision_HUNDREDTHS, 0, 0, CINEMATICFX_GRAIN_SIZE);
+
     AEFX_CLR_STRUCT(def);
-    PF_ADD_FLOAT_SLIDERX("Softness", 0, 100, 0, 100, 50, PF_Precision_HUNDREDTHS, 0, 0, CINEMATICFX_GRAIN_SOFTNESS);
-    
+    PF_ADD_FLOAT_SLIDERX("Grain Softness", 0, 100, 0, 100, 50, PF_Precision_HUNDREDTHS, 0, 0, CINEMATICFX_GRAIN_SOFTNESS);
+
     AEFX_CLR_STRUCT(def);
-    PF_ADD_FLOAT_SLIDERX("Saturation", 0, 200, 0, 200, 100, PF_Precision_HUNDREDTHS, 0, 0, CINEMATICFX_GRAIN_SATURATION);
+    PF_ADD_FLOAT_SLIDERX("Grain Saturation", 0, 200, 0, 200, 100, PF_Precision_HUNDREDTHS, 0, 0, CINEMATICFX_GRAIN_SATURATION);
     
+    // --- CHROMATIC ABERRATION PARAMETERS ---
     AEFX_CLR_STRUCT(def);
-    PF_END_TOPIC(CINEMATICFX_GRAIN_GROUP_END);
-    
-    // --- CHROMATIC ABERRATION GROUP ---
+    PF_ADD_CHECKBOX("Enable Chromatic Aberration", "", TRUE, 0, CINEMATICFX_CHROMA_ENABLED);
+
     AEFX_CLR_STRUCT(def);
-    PF_ADD_TOPIC("Chromatic Aberration", CINEMATICFX_CHROMA_GROUP_START);
-    
+    PF_ADD_FLOAT_SLIDERX("Chromatic Aberration Amount", 0, 100, 0, 100, 10, PF_Precision_HUNDREDTHS, 0, 0, CINEMATICFX_CHROMA_AMOUNT);
+
     AEFX_CLR_STRUCT(def);
     PF_ADD_FLOAT_SLIDERX("Red Channel Scale", 0.5, 2.0, 0.5, 2.0, 1.0, PF_Precision_HUNDREDTHS, 0, 0, CINEMATICFX_CHROMA_RED_SCALE);
-    
+
     AEFX_CLR_STRUCT(def);
     PF_ADD_FLOAT_SLIDERX("Green Channel Scale", 0.5, 2.0, 0.5, 2.0, 1.0, PF_Precision_HUNDREDTHS, 0, 0, CINEMATICFX_CHROMA_GREEN_SCALE);
-    
+
     AEFX_CLR_STRUCT(def);
     PF_ADD_FLOAT_SLIDERX("Blue Channel Scale", 0.5, 2.0, 0.5, 2.0, 1.0, PF_Precision_HUNDREDTHS, 0, 0, CINEMATICFX_CHROMA_BLUE_SCALE);
-    
+
     AEFX_CLR_STRUCT(def);
     PF_ADD_FLOAT_SLIDERX("Blurriness", 0, 10, 0, 10, 0, PF_Precision_HUNDREDTHS, 0, 0, CINEMATICFX_CHROMA_BLURRINESS);
-    
+
     AEFX_CLR_STRUCT(def);
     PF_ADD_ANGLE("Angle", 0, CINEMATICFX_CHROMA_ANGLE);
-    
-    AEFX_CLR_STRUCT(def);
-    PF_END_TOPIC(CINEMATICFX_CHROMA_GROUP_END);
     
     out_data->num_params = CINEMATICFX_NUM_PARAMS;
     
@@ -446,7 +437,7 @@ DllExport PF_Err PluginDataEntryFunction(
         inPluginDataCallBackPtr,
         "CinematicFX",              // Name
         "com.cinebloom.cinematicfx",// Match Name (unique, non-Adobe)
-        "Stylize",                  // Category (standard Premiere category)
+        "Channel",                  // Category (standard Premiere category)
         AE_RESERVED_INFO            // Reserved
     );
     // Explicit host technology (PremierePro)

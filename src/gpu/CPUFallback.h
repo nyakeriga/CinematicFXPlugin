@@ -149,6 +149,9 @@ namespace CinematicFX {
             const float* kernel,
             int32_t kernel_size
         );
+
+        // Bilinear sampling helper
+        float SampleBilinear(const CPUTexture* texture, float u, float v, int channel);
     };
 
 } // namespace CinematicFX

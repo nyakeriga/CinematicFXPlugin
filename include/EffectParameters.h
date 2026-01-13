@@ -77,8 +77,8 @@ namespace CinematicFX {
         float tint_b;              // Tint blue component: 0.0 - 1.0
 
         GlowParameters()
-            : threshold(0.7f), radius_x(40.0f), radius_y(40.0f), diffusion_radius(40.0f),
-              intensity(0.5f), desaturation(0.0f), blend_mode(0),
+            : threshold(0.7f), radius_x(20.0f), radius_y(20.0f), diffusion_radius(20.0f),
+              intensity(0.5f), desaturation(0.3f), blend_mode(1),
               tint_r(1.0f), tint_g(1.0f), tint_b(1.0f) {}
 
         void Validate() {
@@ -97,30 +97,39 @@ namespace CinematicFX {
 
     /**
      * @brief Halation (Film Fringe) parameters
-     * 
+     *
      * Red fringe effect on bright highlights, replicating
      * film stock light scattering.
      */
     struct HalationParameters {
+        bool enabled;          // Enable/disable halation
         float intensity;       // Fringe strength: 0.0 - 1.0
         float spread;          // Fringe spread in pixels: 1.0 - 50.0
+        float hue;             // Fringe color hue: 0.0 - 360.0
+        float saturation;      // Fringe color saturation: 0.0 - 2.0
+        float threshold;       // Luminance threshold: 0.0 - 1.0
 
         HalationParameters()
-            : intensity(0.4f), spread(15.0f) {}
+            : enabled(true), intensity(0.4f), spread(15.0f), hue(0.0f), saturation(1.0f), threshold(0.3f) {}
 
         void Validate() {
             intensity = std::fmax(0.0f, std::fmin(1.0f, intensity));
             spread = std::fmax(1.0f, std::fmin(50.0f, spread));
+            hue = std::fmod(hue, 360.0f);
+            if (hue < 0.0f) hue += 360.0f;
+            saturation = std::fmax(0.0f, std::fmin(2.0f, saturation));
+            threshold = std::fmax(0.0f, std::fmin(1.0f, threshold));
         }
     };
 
     /**
      * @brief Curated Grain parameters
-     * 
+     *
      * Procedural film grain with luminosity-based intensity mapping.
      * Not random per-frame; stable, cinematic grain.
      */
     struct GrainParameters {
+        bool enabled;             // Enable/disable grain
         float shadows_amount;      // Shadows grain intensity: 0.0 - 1.0
         float mids_amount;         // Midtones grain intensity: 0.0 - 1.0
         float highlights_amount;   // Highlights grain intensity: 0.0 - 1.0
@@ -130,7 +139,7 @@ namespace CinematicFX {
         float amount;              // Overall grain visibility (legacy): 0.0 - 1.0
 
         GrainParameters()
-            : shadows_amount(0.2f), mids_amount(0.35f), highlights_amount(0.15f),
+            : enabled(true), shadows_amount(0.2f), mids_amount(0.35f), highlights_amount(0.15f),
               size(1.0f), roughness(0.5f), saturation(1.0f), amount(0.2f) {}
 
         void Validate() {
@@ -146,10 +155,11 @@ namespace CinematicFX {
 
     /**
      * @brief Chromatic Aberration parameters
-     * 
+     *
      * RGB channel spatial offset to simulate lens distortion.
      */
     struct ChromaticAberrationParameters {
+        bool enabled;          // Enable/disable chromatic aberration
         float amount;          // Overall aberration intensity: 0.0 - 1.0
         float red_scale;       // Red channel scale: 0.5 - 2.0
         float green_scale;     // Green channel scale: 0.5 - 2.0
@@ -158,7 +168,7 @@ namespace CinematicFX {
         float angle;           // Offset direction in degrees: 0.0 - 360.0
 
         ChromaticAberrationParameters()
-            : amount(0.0f), red_scale(1.0f), green_scale(1.0f), blue_scale(1.0f),
+            : enabled(true), amount(0.0f), red_scale(1.0f), green_scale(1.0f), blue_scale(1.0f),
               blurriness(0.0f), angle(0.0f) {}
 
         void Validate() {
@@ -205,18 +215,18 @@ namespace CinematicFX {
 
         /**
          * @brief Check if any effect is active
-         * @return true if at least one effect has non-zero strength
+         * @return true if at least one effect has non-zero strength and is enabled
          */
         bool HasActiveEffects() const {
             if (!output_enabled) return false;
             return (bloom.amount > 0.0f) ||
                    (glow.intensity > 0.0f) ||
-                   (halation.intensity > 0.0f) ||
-                   (grain.amount > 0.0f) ||
-                   (grain.shadows_amount > 0.0f) ||
-                   (grain.mids_amount > 0.0f) ||
-                   (grain.highlights_amount > 0.0f) ||
-                   (chromatic_aberration.amount > 0.0f);
+                   (halation.enabled && halation.intensity > 0.0f) ||
+                   (grain.enabled && (grain.amount > 0.0f ||
+                    grain.shadows_amount > 0.0f ||
+                    grain.mids_amount > 0.0f ||
+                    grain.highlights_amount > 0.0f)) ||
+                   (chromatic_aberration.enabled && chromatic_aberration.amount > 0.0f);
         }
     };
 

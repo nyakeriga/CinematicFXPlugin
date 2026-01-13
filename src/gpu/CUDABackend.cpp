@@ -28,12 +28,13 @@ extern "C" {
     void glow_extract_cuda(const float* input, float* output, int width, int height,
                            float threshold, cudaStream_t stream);
     void glow_blur_cuda(const float* input, float* output, int width, int height,
-                        float radius, cudaStream_t stream);
+                        float radius_x, float radius_y, cudaStream_t stream);
     void glow_blend_cuda(const float* original, const float* glow, float* output,
-                         int width, int height, float intensity, cudaStream_t stream);
+                         int width, int height, float intensity, float desaturation,
+                         int blend_mode, float tint_r, float tint_g, float tint_b, cudaStream_t stream);
     
     void halation_extract_cuda(const float* input, float* output, int width, int height,
-                                float threshold, cudaStream_t stream);
+                               float threshold, float hue, float saturation, cudaStream_t stream);
     void halation_blur_cuda(const float* input, float* output, int width, int height,
                             float radius, cudaStream_t stream);
     void halation_blend_cuda(const float* original, const float* halation, float* output,
@@ -317,13 +318,14 @@ void CUDABackend::ExecuteGlow(GPUTexture input, GPUTexture output,
     // Pass 2: Large blur for diffusion
     glow_blur_cuda((const float*)temp, (float*)output,
                     width, height,
-                    params.diffusion_radius,
+                    params.radius_x, params.radius_y,
                     cuda_ctx_->stream);
 
     // Pass 3: Blend with original
     glow_blend_cuda((const float*)input, (const float*)output, (float*)temp,
                      width, height,
-                     params.intensity,
+                     params.intensity, params.desaturation, params.blend_mode,
+                     params.tint_r, params.tint_g, params.tint_b,
                      cuda_ctx_->stream);
 
     // Copy result back to output
@@ -346,10 +348,10 @@ void CUDABackend::ExecuteHalation(GPUTexture input, GPUTexture output,
         return;
     }
 
-    // Pass 1: Extract extreme highlights (red channel only)
+    // Pass 1: Extract extreme highlights with color control
     halation_extract_cuda((const float*)input, (float*)temp,
                            width, height,
-                           0.9f, // High threshold for halation
+                           params.threshold, params.hue, params.saturation,
                            cuda_ctx_->stream);
 
     // Pass 2: Blur the red fringe

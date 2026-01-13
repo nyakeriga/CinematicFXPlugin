@@ -137,40 +137,43 @@ bool RenderPipeline::RenderFrame(
         }
         
         // Pass 3: Halation (Film Fringe)
-        if (params.halation.intensity > 0.0f) {
+        if (params.halation.enabled && params.halation.intensity > 0.0f) {
             PerformanceTimer pass_timer;
             if (profiling_enabled_) pass_timer.Start();
-            
+
             ApplyHalationPass(current_texture, next_texture, params.halation);
             std::swap(current_texture, next_texture);
-            
+
             if (profiling_enabled_) {
                 Logger::Debug("Halation pass: %.2f ms", pass_timer.ElapsedMs());
             }
         }
         
         // Pass 4: Chromatic Aberration
-        if (params.chromatic_aberration.amount > 0.0f) {
+        if (params.chromatic_aberration.enabled && params.chromatic_aberration.amount > 0.0f) {
             PerformanceTimer pass_timer;
             if (profiling_enabled_) pass_timer.Start();
-            
-            ApplyChromaticAberrationPass(current_texture, next_texture, 
+
+            ApplyChromaticAberrationPass(current_texture, next_texture,
                                         params.chromatic_aberration);
             std::swap(current_texture, next_texture);
-            
+
             if (profiling_enabled_) {
                 Logger::Debug("Chromatic Aberration pass: %.2f ms", pass_timer.ElapsedMs());
             }
         }
         
         // Pass 5: Grain (final pass)
-        if (params.grain.amount > 0.0f) {
+        if (params.grain.enabled && (params.grain.amount > 0.0f ||
+            params.grain.shadows_amount > 0.0f ||
+            params.grain.mids_amount > 0.0f ||
+            params.grain.highlights_amount > 0.0f)) {
             PerformanceTimer pass_timer;
             if (profiling_enabled_) pass_timer.Start();
-            
+
             ApplyGrainPass(current_texture, output_texture, params.grain, frame_number);
             current_texture = output_texture;
-            
+
             if (profiling_enabled_) {
                 Logger::Debug("Grain pass: %.2f ms", pass_timer.ElapsedMs());
             }
