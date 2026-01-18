@@ -8,6 +8,7 @@
 #include "CUDABackend.h"
 #include "MetalBackend.h"
 #include "CPUFallback.h"
+#include "../utils/Logger.h"
 #include <memory>
 
 namespace CinematicFX {
@@ -24,7 +25,10 @@ namespace CinematicFX {
             
             if (context->backend_ && context->backend_->Initialize()) {
                 // Success!
+                Logger::Info("GPUContext: Initialized backend: %s", context->backend_->GetDeviceName());
                 return context;
+            } else {
+                Logger::Warning("GPUContext: Failed to initialize backend: %d", static_cast<int>(backend_to_try));
             }
             
             // Fallback logic
@@ -44,7 +48,8 @@ namespace CinematicFX {
         // If we reach here, create CPU fallback (always succeeds)
         context->backend_ = std::make_unique<CPUFallback>();
         context->backend_->Initialize();
-        
+        Logger::Info("GPUContext: Using CPU fallback: %s", context->backend_->GetDeviceName());
+
         return context;
     }
 

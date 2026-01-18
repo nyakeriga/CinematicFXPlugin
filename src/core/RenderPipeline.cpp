@@ -75,12 +75,31 @@ bool RenderPipeline::RenderFrame(
         return false;
     }
     
+    // Fast path: no effects active or output disabled — direct copy to avoid any color bias and overhead
+    if (!params.output_enabled || !params.HasActiveEffects()) {
+        const uint32_t rowStrideInFloatsSrc = input.stride;
+        const uint32_t rowStrideInFloatsDst = output.stride;
+        const uint32_t minStrideFloats = std::min(rowStrideInFloatsSrc, rowStrideInFloatsDst);
+        const size_t bytesPerRow = static_cast<size_t>(minStrideFloats) * sizeof(float);
+
+        if (rowStrideInFloatsSrc == rowStrideInFloatsDst) {
+            std::memcpy(output.data, input.data, bytesPerRow * input.height);
+        } else {
+            for (uint32_t y = 0; y < input.height; ++y) {
+                const float* srcRow = input.data + y * rowStrideInFloatsSrc;
+                float* dstRow = output.data + y * rowStrideInFloatsDst;
+                std::memcpy(dstRow, srcRow, bytesPerRow);
+            }
+        }
+        return true;
+    }
+
     // Initialize textures on first frame or resolution change
-    if (!temp_texture_1_ || !temp_texture_2_) {
+    if (!temp_texture_1_ || !temp_texture_2_ || width_ != input.width || height_ != input.height) {
         InitializeTextures(input.width, input.height);
     }
     
-    // Upload input to GPU
+    // Upload input to GPU (effects path only)
     GPUTexture input_texture = backend->UploadTexture(input);
     if (!input_texture) {
         Logger::Error("RenderPipeline: Failed to upload input texture");
@@ -99,44 +118,24 @@ bool RenderPipeline::RenderFrame(
     GPUTexture current_texture = input_texture;
     GPUTexture next_texture = temp_texture_1_;
     
-    // Skip if no effects are active
-    if (!params.HasActiveEffects()) {
-        // Just copy input to output
-        backend->DownloadTexture(input_texture, output);
-        backend->ReleaseTexture(input_texture);
-        backend->ReleaseTexture(output_texture);
-        return true;
-    }
+    // Effects are active beyond this point
     
     // Apply effect passes
     try {
-        // Pass 1: Bloom
-        if (params.bloom.amount > 0.0f) {
-            PerformanceTimer pass_timer;
-            if (profiling_enabled_) pass_timer.Start();
-            
-            ApplyBloomPass(current_texture, next_texture, params.bloom);
-            std::swap(current_texture, next_texture);
-            
-            if (profiling_enabled_) {
-                Logger::Debug("Bloom pass: %.2f ms", pass_timer.ElapsedMs());
-            }
-        }
-        
-        // Pass 2: Glow (Pro-Mist)
+        // Pass 1: Glow (Pro-Mist) - Bloom merged into Glow
         if (params.glow.intensity > 0.0f) {
             PerformanceTimer pass_timer;
             if (profiling_enabled_) pass_timer.Start();
-            
+
             ApplyGlowPass(current_texture, next_texture, params.glow);
             std::swap(current_texture, next_texture);
-            
+
             if (profiling_enabled_) {
                 Logger::Debug("Glow pass: %.2f ms", pass_timer.ElapsedMs());
             }
         }
-        
-        // Pass 3: Halation (Film Fringe)
+
+        // Pass 2: Halation (Film Fringe)
         if (params.halation.enabled && params.halation.intensity > 0.0f) {
             PerformanceTimer pass_timer;
             if (profiling_enabled_) pass_timer.Start();
@@ -148,8 +147,8 @@ bool RenderPipeline::RenderFrame(
                 Logger::Debug("Halation pass: %.2f ms", pass_timer.ElapsedMs());
             }
         }
-        
-        // Pass 4: Chromatic Aberration
+
+        // Pass 3: Chromatic Aberration
         if (params.chromatic_aberration.enabled && params.chromatic_aberration.amount > 0.0f) {
             PerformanceTimer pass_timer;
             if (profiling_enabled_) pass_timer.Start();
@@ -162,8 +161,8 @@ bool RenderPipeline::RenderFrame(
                 Logger::Debug("Chromatic Aberration pass: %.2f ms", pass_timer.ElapsedMs());
             }
         }
-        
-        // Pass 5: Grain (final pass)
+
+        // Pass 4: Grain (final pass)
         if (params.grain.enabled && (params.grain.amount > 0.0f ||
             params.grain.shadows_amount > 0.0f ||
             params.grain.mids_amount > 0.0f ||
@@ -179,7 +178,13 @@ bool RenderPipeline::RenderFrame(
             }
         } else {
             // No grain - copy current to output
-            backend->ExecuteGrain(current_texture, output_texture, GrainParameters(), frame_number, width_, height_);
+            GrainParameters no_grain;
+            no_grain.shadows_amount = 0.0f;
+            no_grain.mids_amount = 0.0f;
+            no_grain.highlights_amount = 0.0f;
+            no_grain.amount = 0.0f;
+            backend->ExecuteGrain(current_texture, output_texture, no_grain, frame_number, width_, height_);
+            current_texture = output_texture;
         }
         
     } catch (const std::exception& e) {
@@ -189,8 +194,9 @@ bool RenderPipeline::RenderFrame(
         return false;
     }
     
-    // Download result from GPU
-    backend->DownloadTexture(output_texture, output);
+    // Download result from the last written texture
+    GPUTexture final_texture = current_texture;
+    backend->DownloadTexture(final_texture, output);
     
     // Synchronize GPU execution
     backend->Synchronize();

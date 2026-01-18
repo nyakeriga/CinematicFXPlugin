@@ -130,13 +130,15 @@ static CinematicFX::EffectParameters ExtractParameters(PF_ParamDef** params) {
 
     // Chromatic Aberration parameters
     p.chromatic_aberration.enabled = params[CINEMATICFX_CHROMA_ENABLED] ? params[CINEMATICFX_CHROMA_ENABLED]->u.bd.value : true;
-    p.chromatic_aberration.amount = params[CINEMATICFX_CHROMA_AMOUNT] ? params[CINEMATICFX_CHROMA_AMOUNT]->u.fs_d.value / 100.0f : 0.1f;
+    p.chromatic_aberration.amount = params[CINEMATICFX_CHROMA_AMOUNT] ? params[CINEMATICFX_CHROMA_AMOUNT]->u.fs_d.value / 100.0f : 0.0f;
     p.chromatic_aberration.red_scale = params[CINEMATICFX_CHROMA_RED_SCALE] ? params[CINEMATICFX_CHROMA_RED_SCALE]->u.fs_d.value : 1.0f;
     p.chromatic_aberration.green_scale = params[CINEMATICFX_CHROMA_GREEN_SCALE] ? params[CINEMATICFX_CHROMA_GREEN_SCALE]->u.fs_d.value : 1.0f;
     p.chromatic_aberration.blue_scale = params[CINEMATICFX_CHROMA_BLUE_SCALE] ? params[CINEMATICFX_CHROMA_BLUE_SCALE]->u.fs_d.value : 1.0f;
     p.chromatic_aberration.blurriness = params[CINEMATICFX_CHROMA_BLURRINESS] ? params[CINEMATICFX_CHROMA_BLURRINESS]->u.fs_d.value : 0.0f;
     p.chromatic_aberration.angle = params[CINEMATICFX_CHROMA_ANGLE] ? params[CINEMATICFX_CHROMA_ANGLE]->u.ad.value : 0.0f;
 
+    // Validate and clamp to safe ranges to avoid NaNs and overflows
+    p.ValidateAll();
     return p;
 }
 
@@ -213,13 +215,13 @@ static PF_Err ParamsSetup(
     
     // Master Output Enable
     AEFX_CLR_STRUCT(def);
-    PF_ADD_CHECKBOX("Enable Output", "", TRUE, 0, CINEMATICFX_OUTPUT_ENABLED);
-    
+    PF_ADD_CHECKBOX("Enable Output", "", FALSE, 0, CINEMATICFX_OUTPUT_ENABLED);
+
     // Bloom group removed (merged into Glow)
-    
+
     // --- GLOW PARAMETERS ---
     AEFX_CLR_STRUCT(def);
-    PF_ADD_CHECKBOX("Enable Glow", "", TRUE, 0, CINEMATICFX_GLOW_ENABLED);
+    PF_ADD_CHECKBOX("Enable Glow", "", FALSE, 0, CINEMATICFX_GLOW_ENABLED);
 
     AEFX_CLR_STRUCT(def);
     PF_ADD_FLOAT_SLIDERX("Glow Threshold", 0, 100, 0, 100, 70, PF_Precision_HUNDREDTHS, 0, 0, CINEMATICFX_GLOW_THRESHOLD);
@@ -333,6 +335,16 @@ static PF_Err Render(
 
     // Extract effect parameters
     CinematicFX::EffectParameters effect_params = ExtractParameters(params);
+
+    // Fast path: direct copy without processing if no effects active
+    if (!effect_params.output_enabled || !effect_params.HasActiveEffects()) {
+        int width = std::min(input->width, output->width);
+        int height = std::min(input->height, output->height);
+        size_t copy_bytes = std::min(static_cast<size_t>(input->rowbytes) * height,
+                                   static_cast<size_t>(output->rowbytes) * height);
+        memcpy(output->data, input->data, copy_bytes);
+        return PF_Err_NONE;
+    }
 
     // Convert Adobe PF_Pixel8 → Engine Float Buffer
     auto input_float = CinematicFX::ColorConversion::AdobeToEngine(

@@ -44,7 +44,7 @@ namespace CinematicFX {
         float tint_b;          // Blue tint: 0.0 - 1.0
 
         BloomParameters()
-            : amount(0.3f), radius(30.0f), threshold(0.0f), shadow_lift(0.5f),
+            : amount(0.0f), radius(30.0f), threshold(0.0f), shadow_lift(0.5f),
               tint_r(1.0f), tint_g(1.0f), tint_b(1.0f) {}
 
         void Validate() {
@@ -77,18 +77,20 @@ namespace CinematicFX {
         float tint_b;              // Tint blue component: 0.0 - 1.0
 
         GlowParameters()
-            : threshold(0.7f), radius_x(20.0f), radius_y(20.0f), diffusion_radius(20.0f),
-              intensity(0.5f), desaturation(0.3f), blend_mode(1),
-              tint_r(1.0f), tint_g(1.0f), tint_b(1.0f) {}
+                        : threshold(0.7f), radius_x(20.0f), radius_y(20.0f), diffusion_radius(20.0f),
+                            intensity(0.5f), desaturation(0.3f), blend_mode(1),
+                            tint_r(1.0f), tint_g(1.0f), tint_b(1.0f) {}
 
         void Validate() {
             threshold = std::fmax(0.0f, std::fmin(1.0f, threshold));
             radius_x = std::fmax(1.0f, std::fmin(100.0f, radius_x));
             radius_y = std::fmax(1.0f, std::fmin(100.0f, radius_y));
-            diffusion_radius = (radius_x + radius_y) * 0.5f;
+            tint_r = std::fmax(0.0f, std::fmin(1.0f, tint_r));
+            tint_g = std::fmax(0.0f, std::fmin(1.0f, tint_g));
+            tint_b = std::fmax(0.0f, std::fmin(1.0f, tint_b));
             intensity = std::fmax(0.0f, std::fmin(2.0f, intensity));
             desaturation = std::fmax(0.0f, std::fmin(1.0f, desaturation));
-            blend_mode = std::fmax(0, std::min(2, blend_mode));
+            if (blend_mode < 0) blend_mode = 0; else if (blend_mode > 2) blend_mode = 2;
             tint_r = std::fmax(0.0f, std::fmin(1.0f, tint_r));
             tint_g = std::fmax(0.0f, std::fmin(1.0f, tint_g));
             tint_b = std::fmax(0.0f, std::fmin(1.0f, tint_b));
@@ -219,8 +221,7 @@ namespace CinematicFX {
          */
         bool HasActiveEffects() const {
             if (!output_enabled) return false;
-            return (bloom.amount > 0.0f) ||
-                   (glow.intensity > 0.0f) ||
+            return (glow.intensity > 0.0f) ||
                    (halation.enabled && halation.intensity > 0.0f) ||
                    (grain.enabled && (grain.amount > 0.0f ||
                     grain.shadows_amount > 0.0f ||

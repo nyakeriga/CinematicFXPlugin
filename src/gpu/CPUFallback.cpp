@@ -519,6 +519,12 @@ void CPUFallback::GrainCPU(
     const GrainParameters& params,
     uint32_t frame_number
 ) {
+    // Skip if no grain
+    if (params.shadows_amount <= 0.0f && params.mids_amount <= 0.0f && params.highlights_amount <= 0.0f && params.amount <= 0.0f) {
+        memcpy(output->data, input->data, input->stride * input->height * sizeof(float));
+        return;
+    }
+
     float time_z = frame_number / 30.0f; // Temporal stability
 
     for (uint32_t y = 0; y < input->height; y++) {

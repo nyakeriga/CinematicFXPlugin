@@ -41,6 +41,7 @@ namespace CinematicFX {
          * @brief Calculate Gaussian weight
          */
         static inline float GaussianWeight(float x, float sigma) {
+            if (sigma <= 0.0f) return (x == 0.0f) ? 1.0f : 0.0f; // Delta function
             float norm = 1.0f / (sigma * sqrtf(2.0f * 3.14159265359f));
             return norm * expf(-(x * x) / (2.0f * sigma * sigma));
         }
